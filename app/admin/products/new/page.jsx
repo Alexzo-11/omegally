@@ -14,12 +14,21 @@ const CATEGORIES = [
 export default function NewProductPage() {
   const router = useRouter();
   const fileInputRef = useRef(null);
-  const videoInputRef = useRef(null);
 
-  cconst [form, setForm] = useState({
-  title: '', description: '', price: '', discountPrice: '', deliveryFee: '', stock: '', category: 'Fashion', brand: '', sizes: '', colors: '',
-  isFeatured: false // <-- Add this
-});
+  const [form, setForm] = useState({
+    title: '', 
+    description: '', 
+    price: '', 
+    discountPrice: '', 
+    deliveryFee: '', 
+    stock: '', 
+    category: 'Fashion', 
+    brand: '', 
+    sizes: '', 
+    colors: '',
+    isFeatured: false // ✅ Added default state
+  });
+  
   const [images, setImages] = useState([]); 
   const [videoUrl, setVideoUrl] = useState(''); 
   const [uploading, setUploading] = useState(false);
@@ -80,7 +89,6 @@ export default function NewProductPage() {
       setError('Video upload failed. Max size 10MB.');
     } finally {
       setUploading(false);
-      if (videoInputRef.current) videoInputRef.current.value = '';
     }
   };
 
@@ -107,8 +115,6 @@ export default function NewProductPage() {
         body: JSON.stringify({
           ...form,
           price: mainPrice,
-          isFeatured: form.isFeatured, // <-- Add this
-          price: parseFloat(form.price),
           discountPrice: form.discountPrice ? discount : 0,
           deliveryFee: form.deliveryFee ? parseFloat(form.deliveryFee) : 0,
           stock: parseInt(form.stock) || 0,
@@ -116,6 +122,7 @@ export default function NewProductPage() {
           videoUrl: videoUrl,
           sizes: form.sizes.split(',').map(s => s.trim()).filter(Boolean),
           colors: form.colors.split(',').map(c => c.trim()).filter(Boolean),
+          isFeatured: form.isFeatured,
         }),
       });
 
@@ -142,45 +149,27 @@ export default function NewProductPage() {
 
       <form onSubmit={handleSubmit} className="card" style={{ padding: '32px' }}>
         
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
-          <div>
-            <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px' }}>Product Images (Max 5) *</label>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-              {images.map((img, i) => (
-                <div key={i} style={{ position: 'relative', width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}>
-                  <img src={img} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  <button type="button" onClick={() => setImages(images.filter((_, idx) => idx !== i))} style={{ position: 'absolute', top: 0, right: 0, background: 'var(--danger)', color: '#fff', border: 'none', width: '20px', height: '20px', cursor: 'pointer' }}>×</button>
-                </div>
-              ))}
-              {images.length < 5 && (
-                <button type="button" onClick={() => fileInputRef.current?.click()} style={{ width: '60px', height: '60px', borderRadius: '8px', border: '2px dashed var(--border)', background: 'var(--bg)', cursor: 'pointer' }}>
-                  <i className="fas fa-plus"></i>
-                </button>
-              )}
-            </div>
-            <input ref={fileInputRef} type="file" multiple accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px' }}>Video or GIF (Optional)</label>
-            {videoUrl ? (
-              <div style={{ position: 'relative', width: '100%', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}>
-                {videoUrl.endsWith('.mp4') ? (
-                  <video src={videoUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted loop autoPlay />
-                ) : (
-                  <img src={videoUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                )}
-                <button type="button" onClick={() => setVideoUrl('')} style={{ position: 'absolute', top: '4px', right: '4px', background: 'var(--danger)', color: '#fff', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer' }}>×</button>
+        {/* Images */}
+        <div style={{ marginBottom: '24px' }}>
+          <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px' }}>Product Images (Max 5) *</label>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+            {images.map((img, i) => (
+              <div key={i} style={{ position: 'relative', width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                <img src={img} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <button type="button" onClick={() => setImages(images.filter((_, idx) => idx !== i))} style={{ position: 'absolute', top: 0, right: 0, background: 'var(--danger)', color: '#fff', border: 'none', width: '20px', height: '20px', cursor: 'pointer' }}>×</button>
               </div>
-            ) : (
-              <button type="button" onClick={() => videoInputRef.current?.click()} style={{ width: '100%', height: '60px', borderRadius: '8px', border: '2px dashed var(--border)', background: 'var(--bg)', cursor: 'pointer' }}>
-                <i className="fas fa-video"></i> Upload Video/GIF
+            ))}
+            {images.length < 5 && (
+              <button type="button" onClick={() => fileInputRef.current?.click()} style={{ width: '60px', height: '60px', borderRadius: '8px', border: '2px dashed var(--border)', background: 'var(--bg)', cursor: 'pointer' }}>
+                <i className="fas fa-plus"></i>
               </button>
             )}
-            <input ref={videoInputRef} type="file" accept="video/mp4,video/webm,image/gif" onChange={handleVideoUpload} style={{ display: 'none' }} />
           </div>
+          <input ref={fileInputRef} type="file" multiple accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
+          {uploading && <p style={{ fontSize: '0.8rem', color: 'var(--primary)' }}>Uploading...</p>}
         </div>
 
+        {/* Title & Brand */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
           <div>
             <label style={{ display: 'block', fontWeight: 600, marginBottom: '6px' }}>Product Title *</label>
@@ -192,62 +181,66 @@ export default function NewProductPage() {
           </div>
         </div>
 
+        {/* Description */}
         <div style={{ marginBottom: '20px' }}>
           <label style={{ display: 'block', fontWeight: 600, marginBottom: '6px' }}>Description</label>
           <textarea name="description" className="input" rows="3" value={form.description} onChange={handleChange} />
         </div>
 
-        {/* Sizes and Colors */}
+        {/* Sizes & Colors */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
           <div>
             <label style={{ display: 'block', fontWeight: 600, marginBottom: '6px' }}>Sizes (Optional)</label>
-            <input name="sizes" className="input" value={form.sizes} onChange={handleChange} placeholder="e.g., S, M, L, XL, XXL" />
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Separate with commas (Max 5)</span>
+            <input name="sizes" className="input" value={form.sizes} onChange={handleChange} placeholder="e.g., S, M, L" />
           </div>
           <div>
             <label style={{ display: 'block', fontWeight: 600, marginBottom: '6px' }}>Colors (Optional)</label>
-            <input name="colors" className="input" value={form.colors} onChange={handleChange} placeholder="e.g., Red, Blue, Black" />
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Separate with commas (Max 5)</span>
+            <input name="colors" className="input" value={form.colors} onChange={handleChange} placeholder="e.g., Red, Blue" />
           </div>
         </div>
 
+        {/* Pricing & Stock */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '20px', marginBottom: '32px' }}>
           <div>
             <label style={{ display: 'block', fontWeight: 600, marginBottom: '6px' }}>Main Price (₦) *</label>
-            <input name="price" type="number" className="input" value={form.price} onChange={handleChange} required min="0" />
+            <input name="price" type="number" className="input" value={form.price} onChange={handleChange} required />
           </div>
           <div>
-            <label style={{ display: 'block', fontWeight: 600, marginBottom: '6px' }}>Discount Price (₦)</label>
-            <input name="discountPrice" type="number" className="input" value={form.discountPrice} onChange={handleChange} placeholder="Optional" min="0" />
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: '6px' }}>Discount (₦)</label>
+            <input name="discountPrice" type="number" className="input" value={form.discountPrice} onChange={handleChange} />
           </div>
           <div>
             <label style={{ display: 'block', fontWeight: 600, marginBottom: '6px' }}>Delivery Fee (₦)</label>
-            <input name="deliveryFee" type="number" className="input" value={form.deliveryFee} onChange={handleChange} placeholder="0" min="0" />
+            <input name="deliveryFee" type="number" className="input" value={form.deliveryFee} onChange={handleChange} />
           </div>
           <div>
             <label style={{ display: 'block', fontWeight: 600, marginBottom: '6px' }}>Stock *</label>
-            <input name="stock" type="number" className="input" value={form.stock} onChange={handleChange} required min="0" />
+            <input name="stock" type="number" className="input" value={form.stock} onChange={handleChange} required />
           </div>
         </div>
 
-        <div style={{ marginBottom: '32px' }}>
+        {/* Category */}
+        <div style={{ marginBottom: '20px' }}>
           <label style={{ display: 'block', fontWeight: 600, marginBottom: '6px' }}>Category *</label>
           <select name="category" className="input" value={form.category} onChange={handleChange}>
             {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
-        <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-  <input 
-    type="checkbox" 
-    id="isFeatured"
-    checked={form.isFeatured} 
-    onChange={(e) => setForm({ ...form, isFeatured: e.target.checked })} 
-    style={{ width: '20px', height: '20px', accentColor: 'var(--primary)', cursor: 'pointer' }}
-  />
-  <label htmlFor="isFeatured" style={{ fontWeight: 600, cursor: 'pointer', margin: 0 }}>
-    Feature this product on the homepage
-  </label>
-</div>
+
+        {/* Feature Toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', marginBottom: '24px' }}>
+          <input 
+            type="checkbox" 
+            id="isFeatured"
+            checked={form.isFeatured} 
+            onChange={(e) => setForm({ ...form, isFeatured: e.target.checked })} 
+            style={{ width: '22px', height: '22px', accentColor: 'var(--primary)', cursor: 'pointer' }}
+          />
+          <div>
+            <label htmlFor="isFeatured" style={{ fontWeight: 700, cursor: 'pointer', display: 'block', margin: 0 }}>Feature this product</label>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Show this item on the homepage.</span>
+          </div>
+        </div>
 
         <button type="submit" className="btn-primary" disabled={loading || uploading} style={{ width: '100%', justifyContent: 'center', padding: '16px' }}>
           {loading ? 'Publishing...' : 'Publish Product'}

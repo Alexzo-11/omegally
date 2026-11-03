@@ -22,6 +22,7 @@ export default function FeaturedProducts() {
   }, []);
 
   return (
+    
     <section className="featured-section" style={{ padding: '80px 0', background: 'var(--bg)' }}>
       <div className="section-container" style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 24px' }}>
         

@@ -1,339 +1,280 @@
 'use client';
 
-import { useEffect, useState, useMemo, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { useCart } from '@/context/CartContext';
+import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import ProductCard from '@/components/ProductCard';
+import Link from 'next/link';
 
-// 1. Renamed the main component to ProductsContent
-function ProductsContent() {
-  const searchParams = useSearchParams();
+export default function DashboardPage() {
+  const { user, loading: authLoading } = useAuth();
+  const { addToCart } = useCart();
   const router = useRouter();
-  const initialQuery = searchParams.get('q') || '';
-
-  const [allProducts, setAllProducts] = useState([]);
+  
+  const [activeTab, setActiveTab] = useState('overview');
+  const [orders, setOrders] = useState([]);
+  const [wishlist, setWishlist] = useState([]);
+  const [savedItems, setSavedItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  
+  // Mobile menu state
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Filter & Sort State
-  const [searchQuery, setSearchQuery] = useState(initialQuery);
-  const [sortBy, setSortBy] = useState('relevance');
-  const [filters, setFilters] = useState({
-    minPrice: '',
-    maxPrice: '',
-    brand: '',
-    size: '',
-    color: ''
-  });
-
-  // Fetch Products
   useEffect(() => {
-    fetch('/api/products?page=1&limit=100')
-      .then((r) => r.json())
-      .then((d) => setAllProducts(d.products || []))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
+    if (!authLoading && !user) router.push('/login');
+    if (user?.role === 'admin') router.push('/admin');
+  }, [user, authLoading, router]);
 
-  // Update search query if URL changes
   useEffect(() => {
-    setSearchQuery(searchParams.get('q') || '');
-  }, [searchParams]);
+    if (!user) return;
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const orderRes = await fetch('/api/orders', { headers: { Authorization: `Bearer ${token}` } });
+        if (orderRes.ok) {
+          const data = await orderRes.json();
+          setOrders(data.orders || []);
+        }
+        
+        const wishlistIds = JSON.parse(localStorage.getItem('wishlist') || '[]');
+        if (wishlistIds.length > 0) {
+          const prodRes = await fetch('/api/products?limit=100');
+          const prodData = await prodRes.json();
+          setWishlist((prodData.products || []).filter(p => wishlistIds.includes(p._id)));
+        }
 
-  // Extract unique values for filters
-  const uniqueBrands = useMemo(() => [...new Set(allProducts.map(p => p.brand).filter(Boolean))], [allProducts]);
-  const uniqueSizes = useMemo(() => [...new Set(allProducts.flatMap(p => p.sizes || []))], [allProducts]);
-  const uniqueColors = useMemo(() => [...new Set(allProducts.flatMap(p => p.colors || []))], [allProducts]);
-
-  // Filtering & Sorting Logic
-  const filteredAndSortedProducts = useMemo(() => {
-    let result = [...allProducts];
-
-    // 1. Search Query
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(p => 
-        p.title.toLowerCase().includes(q) || 
-        (p.description && p.description.toLowerCase().includes(q))
-      );
-    }
-
-    // 2. Price Filter
-    if (filters.minPrice) {
-      result = result.filter(p => {
-        const price = p.discountPrice > 0 ? p.discountPrice : p.price;
-        return price >= Number(filters.minPrice);
-      });
-    }
-    if (filters.maxPrice) {
-      result = result.filter(p => {
-        const price = p.discountPrice > 0 ? p.discountPrice : p.price;
-        return price <= Number(filters.maxPrice);
-      });
-    }
-
-    // 3. Brand Filter
-    if (filters.brand) {
-      result = result.filter(p => p.brand === filters.brand);
-    }
-
-    // 4. Size Filter
-    if (filters.size) {
-      result = result.filter(p => p.sizes && p.sizes.includes(filters.size));
-    }
-
-    // 5. Color Filter
-    if (filters.color) {
-      result = result.filter(p => p.colors && p.colors.includes(filters.color));
-    }
-
-    // 6. Sorting
-    result.sort((a, b) => {
-      const priceA = a.discountPrice > 0 ? a.discountPrice : a.price;
-      const priceB = b.discountPrice > 0 ? b.discountPrice : b.price;
-
-      switch (sortBy) {
-        case 'price_asc': return priceA - priceB;
-        case 'price_desc': return priceB - priceA;
-        case 'newest': return new Date(b.createdAt) - new Date(a.createdAt);
-        default: return 0; // Relevance (default order from API)
+        const saved = JSON.parse(localStorage.getItem('savedForLater') || '[]');
+        setSavedItems(saved);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
       }
+    };
+    fetchData();
+  }, [user]);
+
+  if (authLoading || !user) return null;
+
+  const totalSpent = orders.reduce((sum, o) => sum + (o.amountPaid || 0), 0);
+
+  const tabs = [
+    { id: 'overview', label: 'Overview', icon: 'fa-home' },
+    { id: 'orders', label: 'My Orders', icon: 'fa-shopping-bag' },
+    { id: 'wishlist', label: 'Wishlist', icon: 'fa-heart' },
+    { id: 'saved', label: 'Saved Items', icon: 'fa-bookmark' },
+  ];
+
+  const moveToCart = (item) => {
+    addToCart({ 
+      id: item.id, 
+      title: item.title, 
+      price: item.price, 
+      image: item.image, 
+      qty: item.qty, 
+      deliveryFee: item.deliveryFee || 0,
+      size: item.size,
+      color: item.color
     });
-
-    return result;
-  }, [allProducts, searchQuery, filters, sortBy]);
-
-  const handleFilterChange = (e) => {
-    setFilters({ ...filters, [e.target.name]: e.target.value });
+    const updated = savedItems.filter(i => i.id !== item.id);
+    setSavedItems(updated);
+    localStorage.setItem('savedForLater', JSON.stringify(updated));
+    alert('Moved to Cart!');
   };
 
-  const clearFilters = () => {
-    setFilters({ minPrice: '', maxPrice: '', brand: '', size: '', color: '' });
-    setSearchQuery('');
-    router.push('/products');
-  };
+  // Order Tracking Timeline Component
+  const statusSteps = ['pending_review', 'paid', 'delivered'];
+  const renderTimeline = (currentStatus) => {
+    let currentIndex = statusSteps.indexOf(currentStatus);
+    if (currentIndex === -1) currentIndex = 0; // fallback for failed/cancelled
 
-  const hasActiveFilters = Object.values(filters).some(val => val !== '') || searchQuery;
+    return (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', position: 'relative', padding: '0 10px' }}>
+        {/* Background Line */}
+        <div style={{ position: 'absolute', top: '14px', left: '10%', right: '10%', height: '2px', background: 'var(--border)', zIndex: 0 }} />
+        {/* Progress Line */}
+        <div style={{ position: 'absolute', top: '14px', left: '10%', width: `${(currentIndex / (statusSteps.length - 1)) * 80}%`, height: '2px', background: 'var(--primary)', zIndex: 1, transition: 'width 0.4s' }} />
+        
+        {statusSteps.map((step, idx) => {
+          const isActive = idx <= currentIndex;
+          return (
+            <div key={step} style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', flex: 1 }}>
+              <div style={{ 
+                width: '28px', height: '28px', borderRadius: '50%', 
+                background: isActive ? 'var(--primary)' : 'var(--bg)', 
+                border: isActive ? '2px solid var(--primary)' : '2px solid var(--border)',
+                color: isActive ? '#fff' : 'var(--text-secondary)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.3s'
+              }}>
+                <i className={`fas ${
+                  step === 'pending_review' ? 'fa-clock' : 
+                  step === 'paid' ? 'fa-check' : 'fa-box-open'
+                }`} style={{ fontSize: '0.65rem' }}></i>
+              </div>
+              <span style={{ fontSize: '0.65rem', fontWeight: isActive ? 700 : 500, color: isActive ? 'var(--text)' : 'var(--text-tertiary)', textAlign: 'center', textTransform: 'capitalize' }}>
+                {step.replace('_', ' ')}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <>
       <Navbar />
-      <main style={{ paddingTop: 'calc(var(--nav-height) + 40px)', paddingBottom: '80px', minHeight: '80vh', background: 'var(--bg)' }}>
-        <div className="container" style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 24px' }}>
-          
-          {/* Header & Mobile Filter Toggle */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
-            <div>
-              <h1 className="section-title" style={{ fontSize: '2rem', marginBottom: '8px' }}>
-                {searchQuery ? `Search: "${searchQuery}"` : 'Shop All Products'}
-              </h1>
-              <p className="section-subtitle" style={{ margin: 0 }}>
-                {filteredAndSortedProducts.length} product{filteredAndSortedProducts.length !== 1 ? 's' : ''} found
-              </p>
+      <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)', paddingTop: 'calc(var(--nav-height) + 20px)' }}>
+        
+        {/* Desktop Sidebar */}
+        <aside style={{ width: '260px', background: 'var(--bg-elevated)', borderRight: '1px solid var(--border)', position: 'sticky', top: 'calc(var(--nav-height) + 20px)', height: 'calc(100vh - var(--nav-height) - 20px)', flexShrink: 0, display: 'flex', flexDirection: 'column', padding: '24px 16px' }} className="user-sidebar">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '24px', borderBottom: '1px solid var(--border)', marginBottom: '24px' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', fontWeight: 700, flexShrink: 0 }}>
+              {user.name?.charAt(0).toUpperCase()}
             </div>
-
-            {/* Sort Dropdown */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Sort by:</span>
-              <select 
-                value={sortBy} 
-                onChange={(e) => setSortBy(e.target.value)}
-                className="input"
-                style={{ width: '160px', padding: '10px', cursor: 'pointer' }}
-              >
-                <option value="relevance">Relevance</option>
-                <option value="price_asc">Price: Low to High</option>
-                <option value="price_desc">Price: High to Low</option>
-                <option value="newest">Newest Arrivals</option>
-              </select>
-              
-              <button 
-                className="btn btn-secondary mobile-filter-btn"
-                onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
-              >
-                <i className="fas fa-filter"></i> Filters
-              </button>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.name}</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.email}</div>
             </div>
           </div>
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            {tabs.map(tab => (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderRadius: '8px', fontWeight: 500, background: activeTab === tab.id ? 'var(--primary)' : 'transparent', color: activeTab === tab.id ? '#fff' : 'var(--text-secondary)', border: 'none', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s' }}>
+                <i className={`fas ${tab.icon}`} style={{ width: '20px' }}></i> {tab.label}
+              </button>
+            ))}
+          </nav>
+        </aside>
 
-          <div style={{ display: 'flex', gap: '32px', alignItems: 'flex-start' }}>
-            
-            {/* Sidebar Filters */}
-            <aside className={`filter-sidebar ${mobileFiltersOpen ? 'open' : ''}`} style={{ width: '260px', flexShrink: 0 }}>
-              
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Filters</h3>
-                {hasActiveFilters && (
-                  <button onClick={clearFilters} style={{ fontSize: '0.8rem', color: 'var(--danger)', fontWeight: 600, cursor: 'pointer' }}>
-                    Clear All
+        {/* Main Content */}
+        <main style={{ flex: 1, padding: '32px', minWidth: 0 }} className="user-main">
+          
+          {/* Mobile Menu Dropdown */}
+          <div className="mobile-dash-nav" style={{ display: 'none', marginBottom: '20px' }}>
+            <button 
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
+              style={{ width: '100%', padding: '14px 16px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 600, fontSize: '0.95rem', cursor: 'pointer', color: 'var(--text)' }}
+            >
+              <span><i className={`fas ${tabs.find(t => t.id === activeTab)?.icon}`} style={{ marginRight: '10px', color: 'var(--primary)' }}></i> {tabs.find(t => t.id === activeTab)?.label}</span>
+              <i className={`fas fa-chevron-${mobileMenuOpen ? 'up' : 'down'}`} style={{ fontSize: '0.8rem' }}></i>
+            </button>
+            {mobileMenuOpen && (
+              <div style={{ marginTop: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
+                {tabs.map(tab => (
+                  <button 
+                    key={tab.id} 
+                    onClick={() => { setActiveTab(tab.id); setMobileMenuOpen(false); }} 
+                    style={{ width: '100%', padding: '14px 16px', background: activeTab === tab.id ? 'var(--primary)' : 'transparent', color: activeTab === tab.id ? '#fff' : 'var(--text)', border: 'none', borderBottom: '1px solid var(--border)', textAlign: 'left', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 500 }}
+                  >
+                    <i className={`fas ${tab.icon}`} style={{ marginRight: '10px', width: '16px' }}></i> {tab.label}
                   </button>
-                )}
+                ))}
               </div>
+            )}
+          </div>
 
-              <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                
-                {/* Price Range */}
+          {loading ? <p style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>Loading...</p> : (
+            <>
+              {activeTab === 'overview' && (
+                 <div>
+                   <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '8px' }}>Welcome back, {user.name.split(' ')[0]} 👋</h1>
+                   <p style={{ color: 'var(--text-secondary)', marginBottom: '32px' }}>Here is a summary of your account.</p>
+                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
+                     <div className="card" style={{ padding: '24px' }}><div style={{ fontSize: '1.4rem', fontWeight: 800 }}>{orders.length}</div><div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Total Orders</div></div>
+                     <div className="card" style={{ padding: '24px' }}><div style={{ fontSize: '1.4rem', fontWeight: 800 }}>₦{totalSpent.toLocaleString()}</div><div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Total Spent</div></div>
+                     <div className="card" style={{ padding: '24px' }}><div style={{ fontSize: '1.4rem', fontWeight: 800 }}>{wishlist.length}</div><div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Wishlist</div></div>
+                   </div>
+                 </div>
+              )}
+              
+              {activeTab === 'orders' && (
                 <div>
-                  <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px', fontSize: '0.9rem' }}>Price Range (₦)</label>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <input 
-                      type="number" 
-                      name="minPrice" 
-                      placeholder="Min" 
-                      value={filters.minPrice} 
-                      onChange={handleFilterChange}
-                      className="input"
-                      style={{ padding: '8px' }}
-                    />
-                    <input 
-                      type="number" 
-                      name="maxPrice" 
-                      placeholder="Max" 
-                      value={filters.maxPrice} 
-                      onChange={handleFilterChange}
-                      className="input"
-                      style={{ padding: '8px' }}
-                    />
-                  </div>
-                </div>
+                  <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '24px' }}>My Orders</h1>
+                  <div style={{ display: 'grid', gap: '20px' }}>
+                    {orders.length === 0 ? <p style={{ color: 'var(--text-secondary)' }}>No orders yet.</p> : orders.map(order => (
+                      <div key={order._id} className="card" style={{ padding: '20px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>Order #{order._id.slice(-6).toUpperCase()}</div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{new Date(order.createdAt).toLocaleDateString()}</div>
+                          </div>
+                          <div style={{ fontWeight: 800, color: 'var(--primary)' }}>₦{order.totalAmount.toLocaleString()}</div>
+                        </div>
+                        
+                        {renderTimeline(order.paymentStatus === 'failed' ? 'pending_review' : order.paymentStatus)}
 
-                {/* Brand */}
-                {uniqueBrands.length > 0 && (
-                  <div>
-                    <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px', fontSize: '0.9rem' }}>Brand</label>
-                    <select name="brand" value={filters.brand} onChange={handleFilterChange} className="input" style={{ cursor: 'pointer' }}>
-                      <option value="">All Brands</option>
-                      {uniqueBrands.map(b => <option key={b} value={b}>{b}</option>)}
-                    </select>
+                        {order.paymentMethod === 'installment' && order.paymentStatus !== 'paid' && order.paymentStatus !== 'delivered' && (
+                          <div style={{ marginTop: '20px', background: 'rgba(245,158,11,0.08)', padding: '16px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                            <div>
+                              <strong style={{ color: 'var(--warning)', display: 'block', fontSize: '0.9rem' }}>Pending Balance</strong>
+                              <span style={{ fontSize: '0.85rem' }}>₦{(order.totalAmount - order.amountPaid).toLocaleString()} remaining</span>
+                            </div>
+                            <Link href={`/payment/complete/${order._id}`} className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>Pay Balance</Link>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                )}
-
-                {/* Size */}
-                {uniqueSizes.length > 0 && (
-                  <div>
-                    <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px', fontSize: '0.9rem' }}>Size</label>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                      {uniqueSizes.map(s => (
-                        <button
-                          key={s}
-                          onClick={() => setFilters({ ...filters, size: filters.size === s ? '' : s })}
-                          style={{
-                            padding: '6px 14px', borderRadius: '8px', fontSize: '0.85rem', cursor: 'pointer',
-                            border: filters.size === s ? '2px solid var(--primary)' : '1px solid var(--border)',
-                            background: filters.size === s ? 'rgba(37,99,235,0.1)' : 'transparent',
-                            color: filters.size === s ? 'var(--primary)' : 'var(--text)',
-                            fontWeight: 500
-                          }}
-                        >
-                          {s}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Color */}
-                {uniqueColors.length > 0 && (
-                  <div>
-                    <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px', fontSize: '0.9rem' }}>Color</label>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                      {uniqueColors.map(c => (
-                        <button
-                          key={c}
-                          onClick={() => setFilters({ ...filters, color: filters.color === c ? '' : c })}
-                          style={{
-                            padding: '6px 14px', borderRadius: '8px', fontSize: '0.85rem', cursor: 'pointer',
-                            border: filters.color === c ? '2px solid var(--primary)' : '1px solid var(--border)',
-                            background: filters.color === c ? 'rgba(37,99,235,0.1)' : 'transparent',
-                            color: filters.color === c ? 'var(--primary)' : 'var(--text)',
-                            fontWeight: 500
-                          }}
-                        >
-                          {c}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </aside>
-
-            {/* Product Grid */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              {loading ? (
-                <div className="products-grid">
-                  {[...Array(8)].map((_, i) => (
-                    <div key={i} className="skeleton-card" style={{ height: '320px', borderRadius: '16px' }} />
-                  ))}
-                </div>
-              ) : filteredAndSortedProducts.length === 0 ? (
-                <div className="card" style={{ textAlign: 'center', padding: '80px 20px' }}>
-                  <i className="fas fa-search" style={{ fontSize: '3rem', color: 'var(--text-tertiary)', marginBottom: '16px' }}></i>
-                  <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '8px' }}>No products found</h3>
-                  <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>Try adjusting your filters or search term.</p>
-                  <button onClick={clearFilters} className="btn-primary">Clear All Filters</button>
-                </div>
-              ) : (
-                <div className="products-grid">
-                  {filteredAndSortedProducts.map((p) => (
-                    <ProductCard key={p._id} product={p} />
-                  ))}
                 </div>
               )}
-            </div>
-          </div>
-        </div>
-      </main>
+
+              {activeTab === 'wishlist' && (
+                <div>
+                  <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '24px' }}>My Wishlist</h1>
+                  {wishlist.length === 0 ? <p style={{ color: 'var(--text-secondary)' }}>Wishlist is empty.</p> : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '16px' }}>
+                      {wishlist.map(p => (
+                        <Link key={p._id} href={`/products/${p._id}`} className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                          <img src={p.images?.[0]} alt={p.title} style={{ width: '100%', height: '140px', objectFit: 'cover' }} />
+                          <div style={{ padding: '12px' }}>
+                            <h4 style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '4px' }}>{p.title}</h4>
+                            <div style={{ fontWeight: 800, color: 'var(--primary)' }}>₦{p.price.toLocaleString()}</div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'saved' && (
+                <div>
+                  <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '24px' }}>Saved for Later</h1>
+                  {savedItems.length === 0 ? <p style={{ color: 'var(--text-secondary)' }}>No saved items.</p> : (
+                    <div style={{ display: 'grid', gap: '16px' }}>
+                      {savedItems.map(item => (
+                        <div key={item.id} className="card" style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+                          <img src={item.image} alt={item.title} style={{ width: '70px', height: '70px', objectFit: 'cover', borderRadius: '8px' }} />
+                          <div style={{ flex: 1, minWidth: '150px' }}>
+                            <h4 style={{ fontWeight: 700, fontSize: '0.95rem' }}>{item.title}</h4>
+                            <div style={{ fontWeight: 800, color: 'var(--primary)' }}>₦{item.price.toLocaleString()}</div>
+                          </div>
+                          <button onClick={() => moveToCart(item)} className="btn-primary" style={{ padding: '10px 16px', fontSize: '0.85rem' }}>
+                            Move to Cart
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </main>
+      </div>
       <Footer />
 
-      {/* Mobile Filter Drawer Overlay */}
-      {mobileFiltersOpen && (
-        <div 
-          className="mobile-filter-overlay" 
-          onClick={() => setMobileFiltersOpen(false)}
-          style={{ display: 'none', position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000 }}
-        />
-      )}
-
       <style jsx global>{`
-        /* Hide mobile filter button on desktop */
-        .mobile-filter-btn { display: none; }
-
-        @media (max-width: 900px) {
-          .mobile-filter-btn { display: flex; align-items: center; gap: 8px; }
-          
-          .filter-sidebar {
-            position: fixed;
-            top: 0;
-            left: -100%;
-            bottom: 0;
-            width: 300px;
-            background: var(--bg);
-            z-index: 1001;
-            padding: 24px;
-            overflow-y: auto;
-            transition: left 0.3s ease;
-            box-shadow: 20px 0 60px rgba(0,0,0,0.1);
-          }
-
-          .filter-sidebar.open { left: 0; }
-          .mobile-filter-overlay { display: block !important; }
+        @media (max-width: 768px) {
+          .user-sidebar { display: none !important; }
+          .user-main { padding: 16px !important; }
+          .mobile-dash-nav { display: block !important; }
+          .user-main > div:first-child { margin-top: 0; }
         }
       `}</style>
     </>
-  );
-}
-
-// 2. Added the Suspense wrapper as the default export
-export default function ProductsPage() {
-  return (
-    <Suspense fallback={
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--bg)' }}>
-        <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', color: 'var(--primary)' }}></i>
-      </div>
-    }>
-      <ProductsContent />
-    </Suspense>
   );
 }
