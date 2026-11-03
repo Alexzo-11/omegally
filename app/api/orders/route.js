@@ -5,7 +5,6 @@ import User from '@/models/User';
 import { verifyToken } from '@/lib/jwt';
 import { withAdmin } from '@/middleware/auth';
 import { sendOrderConfirmationEmail } from '@/lib/sendEmail';
-import User from '@/models/User';
 
 
 // GET: Fetch orders (User sees own, Admin sees all)

@@ -1,7 +1,7 @@
 // app/api/auth/reset-password/route.js
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
-import connectToDatabase from '@/lib/mongoose';
+import bcrypt from 'bcrypt';
+import { connectToDatabase } from '@/lib/mongoose';
 import User from '@/models/User';
 
 export async function POST(req) {

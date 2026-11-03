@@ -4,7 +4,7 @@ const adSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String },
   imageUrl: { type: String, required: true },
-  linkUrl: { type: String, default: '/' }, // Where the ad clicks to
+  linkUrl: { type: String, default: '/' },
   isActive: { type: Boolean, default: true },
 }, { timestamps: true });
 
