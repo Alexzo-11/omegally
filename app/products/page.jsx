@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import ProductCard from '@/components/ProductCard';
 
-export default function ProductsPage() {
+// 1. Renamed the main component to ProductsContent
+function ProductsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialQuery = searchParams.get('q') || '';
@@ -321,5 +322,18 @@ export default function ProductsPage() {
         }
       `}</style>
     </>
+  );
+}
+
+// 2. Added the Suspense wrapper as the default export
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--bg)' }}>
+        <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', color: 'var(--primary)' }}></i>
+      </div>
+    }>
+      <ProductsContent />
+    </Suspense>
   );
 }
