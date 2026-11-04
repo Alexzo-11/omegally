@@ -13,22 +13,28 @@ export default function AdminLoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
   e.preventDefault();
   setError('');
   setLoading(true);
+  
   try {
-    // Await the user object from the context
+    // 1. Call login and get the returned user
     const loggedInUser = await login(email, password);
     
-    // Check if the returned user is an admin
-    if (loggedInUser && loggedInUser.role === 'admin') {
+    // 2. Add a safety check here
+    if (!loggedInUser) {
+      throw new Error('Login failed. Please try again.');
+    }
+
+    // 3. Check role
+    if (loggedInUser.role === 'admin') {
       router.push('/admin');
     } else {
-      setError('Access denied. You are not an admin.');
+      setError('Access denied. You do not have admin privileges.');
     }
   } catch (err) {
-    setError(err.message || 'Login failed');
+    setError(err.message || 'Invalid email or password');
   } finally {
     setLoading(false);
   }

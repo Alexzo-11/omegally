@@ -1,33 +1,29 @@
 import mongoose from 'mongoose';
 
-const orderSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+const OrderSchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // MUST BE HERE
   items: [{
     product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
     title: String,
     price: Number,
     qty: Number,
     image: String,
-    size: { type: String, default: '' },  // Added
-    color: { type: String, default: '' }, // Added
-    landmark: { type: String, default: '' },
-altPhone: { type: String, default: '' },
+    size: String,
+    color: String
   }],
   totalAmount: { type: Number, required: true },
-  amountPaid: { type: Number, default: 0 },
-  paymentMethod: { type: String, enum: ['instant', 'installment', 'bank'] },
-  paymentStatus: { 
-    type: String, 
-    enum: ['pending_review', 'paid', 'failed', 'delivered', 'cancelled'], 
-    default: 'pending_review' 
-  },
-  receiptImage: String,
+  amountPaid: { type: Number, required: true },
+  paymentMethod: { type: String, enum: ['bank', 'installment', 'instant'], default: 'bank' },
+  paymentStatus: { type: String, default: 'pending_review' },
+  receiptImage: { type: String },
   bankDetails: {
     bankName: String,
     accountName: String,
     accountNumber: String,
   },
   installmentWeeks: { type: Number, default: 1 },
+  landmark: { type: String, default: '' },
+  altPhone: { type: String, default: '' },
 }, { timestamps: true });
 
-export default mongoose.models.Order || mongoose.model('Order', orderSchema);
+export default mongoose.models.Order || mongoose.model('Order', OrderSchema);

@@ -9,7 +9,6 @@ export default function Trending() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch from relative path instead of process.env.NEXT_PUBLIC_APP_URL
     fetch('/api/products?limit=40')
       .then((res) => res.json())
       .then((data) => {
@@ -19,7 +18,6 @@ export default function Trending() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Extract unique categories safely
   const categories = [...new Set(products.map(p => p.category))].filter(Boolean);
 
   return (
@@ -36,7 +34,7 @@ export default function Trending() {
           </Link>
         </div>
 
-        {/* Category Pills (Only show if categories exist) */}
+        {/* Category Pills */}
         {categories.length > 0 && (
           <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '16px', marginBottom: '24px' }}>
             <Link href="/products" style={{ padding: '8px 16px', borderRadius: '100px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text)', fontSize: '0.85rem', fontWeight: 600, whiteSpace: 'nowrap' }}>All</Link>
@@ -48,7 +46,7 @@ export default function Trending() {
 
         {/* Loading / Products Grid */}
         {loading ? (
-          <div className="products-grid">
+          <div className="trending-grid">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="skeleton-card" style={{ height: '340px', borderRadius: '16px' }} />
             ))}
@@ -59,11 +57,25 @@ export default function Trending() {
             <p>No products available yet.</p>
           </div>
         ) : (
-          <div className="products-grid">
+          <div className="trending-grid">
             {products.map(p => <ProductCard key={p._id} product={p} />)}
           </div>
         )}
       </div>
+
+      <style jsx global>{`
+        .trending-grid {
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          gap: 20px;
+        }
+        @media (max-width: 1024px) {
+          .trending-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (max-width: 768px) {
+          .trending-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 12px; }
+        }
+      `}</style>
     </section>
   );
 }

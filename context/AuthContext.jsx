@@ -35,24 +35,22 @@ export function AuthProvider({ children }) {
     fetchUser();
   }, []);
 
-    const login = async (email, password) => {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Login failed');
-    
-    // Save token
-    localStorage.setItem('token', data.token);
-    
-    // Save user to state immediately
-    setUser(data.user); 
-    
-    // Return the user so the login page can check their role
-    return data.user; 
-  };
+  const login = async (email, password) => {
+  const res = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await res.json();
+  
+  if (!res.ok) throw new Error(data.error || 'Login failed');
+  
+  // SAVE THE TOKEN
+  localStorage.setItem('token', data.token); 
+  
+  setUser(data.user);
+  return data.user;
+};
 
   const register = async (name, email, password, phone, address) => {
     const res = await fetch('/api/auth/register', {

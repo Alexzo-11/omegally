@@ -2192,5 +2192,8 @@ a:hover .footer-logo { transform: scale(1.02); }
 }
 
 @media (max-width: 480px) {
-  .products-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } /* 2 columns */
+  .products-grid { 
+    grid-template-columns: repeat(2, 1fr) !important; 
+    gap: 10px !important; 
+  }
 }

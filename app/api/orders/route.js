@@ -1,20 +1,53 @@
-// app/api/orders/route.js
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongoose';
 import Order from '@/models/Order';
 import User from '@/models/User';
 import { verifyToken } from '@/lib/jwt';
-import nodemailer from 'nodemailer';
 
-// ... GET handler as-is
+// GET: Fetch orders
+export async function GET(req) {
+  try {
+    await connectToDatabase();
+    
+    const authHeader = req.headers.get('authorization');
+    const token = authHeader?.split(' ')[1];
 
+    if (!token) return NextResponse.json({ error: 'Unauthorized - No token' }, { status: 401 });
+    
+    const decoded = verifyToken(token);
+    if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+
+    const user = await User.findById(decoded.id);
+    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+
+    let orders;
+    if (user.role === 'admin') {
+      // Admin sees all orders, populate user details
+      orders = await Order.find()
+        .sort({ createdAt: -1 })
+        .populate('user', 'name email phone address');
+    } else {
+      // User sees only their own orders
+      orders = await Order.find({ user: decoded.id }).sort({ createdAt: -1 });
+    }
+
+    return NextResponse.json({ orders });
+  } catch (error) {
+    console.error('GET Orders Error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+// POST: Create a new order
 export async function POST(req) {
   try {
     await connectToDatabase();
+    
     const authHeader = req.headers.get('authorization');
     const token = authHeader?.split(' ')[1];
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
+    
+    if (!token) return NextResponse.json({ error: 'Unauthorized - No token' }, { status: 401 });
+    
     const decoded = verifyToken(token);
     if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
@@ -26,7 +59,7 @@ export async function POST(req) {
     }
 
     const order = new Order({
-      user: decoded.id,
+      user: decoded.id, // This links the order to the logged-in user
       items: items.map((i) => ({
         product: i.productId,
         title: i.title,
@@ -47,53 +80,9 @@ export async function POST(req) {
 
     await order.save();
 
-    // --- EMAIL NOTIFICATION ---
-    try {
-      const user = await User.findById(decoded.id);
-      if (user?.email) {
-        const transporter = nodemailer.createTransport({
-          service: 'gmail',
-          auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
-        });
-
-        const isInstallment = order.paymentMethod === 'installment';
-        const balance = order.totalAmount - order.amountPaid;
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-        const receiptUrl = `${appUrl}/receipt/${order._id}`;
-
-        await transporter.sendMail({
-          from: `"Omegally" <${process.env.EMAIL_USER}>`,
-          to: user.email,
-          subject: `Order Confirmation #${order._id.slice(-6).toUpperCase()}`,
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <h2 style="color: #2563EB;">Thank you for your order!</h2>
-              <p>Hi ${user.name},</p>
-              <p>Your order <strong>#${order._id.slice(-6).toUpperCase()}</strong> has been received and is being processed.</p>
-              
-              <div style="background:#f5f5f5; padding:16px; border-radius:8px; margin:20px 0;">
-                <p style="margin:4px 0;"><strong>Total Amount:</strong> ₦${order.totalAmount.toLocaleString()}</p>
-                <p style="margin:4px 0;"><strong>Amount Paid:</strong> ₦${order.amountPaid.toLocaleString()}</p>
-                ${isInstallment && balance > 0 ? `<p style="margin:4px 0; color:#F59E0B;"><strong>Remaining Balance:</strong> ₦${balance.toLocaleString()}</p>` : ''}
-              </div>
-
-              <p style="text-align:center; margin:24px 0;">
-                <a href="${receiptUrl}" style="background:#2563EB; color:#fff; padding:12px 24px; border-radius:8px; text-decoration:none; font-weight:bold;">View Your Receipt</a>
-              </p>
-
-              <p style="color:#666; font-size:0.9rem;">If you have any questions, reply to this email or contact us at support@omegally.com.</p>
-              <p style="color:#666; font-size:0.9rem;">— The Omegally Team</p>
-            </div>
-          `,
-        });
-      }
-    } catch (emailErr) {
-      console.error('Order email failed:', emailErr.message);
-      // Don't fail the order if email fails
-    }
-
     return NextResponse.json({ order }, { status: 201 });
   } catch (error) {
+    console.error('POST Order Error:', error);
     return NextResponse.json({ error: error.message || 'Failed to create order' }, { status: 500 });
   }
 }
