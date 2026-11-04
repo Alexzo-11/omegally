@@ -7,7 +7,7 @@ export const metadata = {
   title: 'Omegally — Shop Smart, Pay Your Way',
   description: 'Premium products with flexible installment payments.',
   verification: {
-    google: "<meta name="google-site-verification" content="7Mg9Oq20_ww7brtSCkybn9yoK3ozr4MT0gafHS36RS0" />",
+    google: "7Mg9Oq20_ww7brtSCkybn9yoK3ozr4MT0gafHS36RS0",
   },
 };
 
