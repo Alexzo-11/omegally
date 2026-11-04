@@ -11,6 +11,7 @@ export const PUT = withAdmin(async (req, { params }) => {
 
     // Allow updating paymentStatus (e.g. 'paid', 'delivered', 'failed')
     const order = await Order.findByIdAndUpdate(id, body, { new: true });
+    const order = await Order.findById(id).populate('user', 'name email phone');
     
     if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     return NextResponse.json(order);
