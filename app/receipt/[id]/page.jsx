@@ -124,6 +124,24 @@ export default function ReceiptPage() {
             <span>₦{(order.amountPaid || 0).toLocaleString()}</span>
           </div>
         </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px', paddingTop: '20px', borderTop: '2px solid var(--border)', fontWeight: 900, fontSize: '1.2rem' }}>
+  <span>Total Paid</span>
+  <span>₦{(order.amountPaid || 0).toLocaleString()}</span>
+</div>
+
+{order.paymentMethod === 'installment' && order.totalAmount > order.amountPaid && (
+  <div style={{
+    display: 'flex', justifyContent: 'space-between',
+    marginTop: '12px', padding: '12px',
+    background: 'rgba(245,158,11,0.1)',
+    border: '1px solid rgba(245,158,11,0.3)',
+    borderRadius: '8px',
+    color: 'var(--warning)', fontWeight: 700, fontSize: '0.95rem',
+  }}>
+    <span><i className="fas fa-exclamation-triangle"></i> Balance Due</span>
+    <span>₦{(order.totalAmount - order.amountPaid).toLocaleString()}</span>
+  </div>
+)}
 
         {/* Footer */}
         <div style={{ background: 'var(--bg)', padding: '24px', textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-secondary)', borderTop: '1px solid var(--border)' }}>

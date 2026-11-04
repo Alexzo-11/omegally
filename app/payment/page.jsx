@@ -27,6 +27,8 @@ export default function PaymentPage() {
   const [orderData, setOrderData] = useState(null);
   const [copied, setCopied] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [landmark, setLandmark] = useState('');
+  const [altPhone, setAltPhone] = useState('');
 
   useEffect(() => {
     if (cart.length === 0 && step < 3) router.push('/products');
@@ -35,16 +37,14 @@ export default function PaymentPage() {
 
   if (cart.length === 0 && step < 3) return null;
 
-  // Base Calculations
+  // Calculations
   const cartSubtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
   const deliveryFee = cart.reduce((s, i) => s + (i.deliveryFee || 0) * i.qty, 0);
   const baseTotal = cartSubtotal + deliveryFee;
 
-  // Installment Logic: 4% commission added to the base total
   const installmentCommission = method === 'installment' ? baseTotal * 0.04 : 0;
   const finalTotal = baseTotal + installmentCommission;
   
-  // 50% Upfront for installments, 100% for instant
   const amountToPay = method === 'installment' ? finalTotal / 2 : finalTotal;
   const remainingBalance = finalTotal - amountToPay;
 
@@ -68,7 +68,9 @@ export default function PaymentPage() {
 
   const handleSubmitOrder = async () => {
     if (!receipt) return alert('Please upload your payment receipt.');
+    if (!landmark.trim()) return alert('Please provide a delivery landmark.');
     setLoading(true);
+    
     try {
       const token = localStorage.getItem('token');
       const res = await fetch('/api/orders', {
@@ -90,6 +92,8 @@ export default function PaymentPage() {
           weeks: method === 'installment' ? 2 : 1,
           receiptDataUrl: receiptPreview,
           bankDetails: BANK_DETAILS,
+          landmark,
+          altPhone,
         }),
       });
       
@@ -110,62 +114,69 @@ export default function PaymentPage() {
     <>
       <Navbar />
       <main style={{ paddingTop: 'calc(var(--nav-height) + 40px)', paddingBottom: '100px', minHeight: '80vh', background: 'var(--bg)' }}>
-        <div className="container" style={{ maxWidth: '900px', margin: '0 auto' }}>
+        
+        {/* Centered Wrapper with mobile padding */}
+        <div style={{ maxWidth: '900px', margin: '0 auto', padding: '0 16px' }}>
           
-          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginBottom: '40px' }}>
+          {/* Step Indicator */}
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '40px', flexWrap: 'wrap' }}>
             {[1, 2, 3].map((n) => (
               <div key={n} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{
-                  width: '32px', height: '32px', borderRadius: '50%',
+                  width: '30px', height: '30px', borderRadius: '50%',
                   background: step >= n ? 'var(--primary)' : 'var(--border)',
                   color: step >= n ? '#fff' : 'var(--text-secondary)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '0.85rem',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '0.8rem',
                 }}>{n}</div>
-                <span style={{ fontSize: '0.85rem', fontWeight: step >= n ? '600' : '400', color: step >= n ? 'var(--text)' : 'var(--text-secondary)' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: step >= n ? '600' : '400', color: step >= n ? 'var(--text)' : 'var(--text-secondary)' }}>
                   {n === 1 ? 'Choose Plan' : n === 2 ? 'Pay & Upload' : 'Confirmed'}
                 </span>
               </div>
             ))}
           </div>
 
+          {/* STEP 1: Choose Plan */}
           {step === 1 && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '32px', alignItems: 'start' }} className="payment-grid">
+            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '24px', alignItems: 'start' }} className="payment-grid">
               
               <div>
-                <div className="card" style={{ marginBottom: '24px', padding: '32px' }}>
+                <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '24px', marginBottom: '24px' }}>
                   <h3 style={{ fontWeight: '700', fontSize: '1.2rem', marginBottom: '20px' }}>Select Payment Method</h3>
                   
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {/* Instant Payment */}
                     <div 
                       onClick={() => setMethod('instant')}
-                      style={{ padding: '20px', borderRadius: '12px', border: method === 'instant' ? '2px solid var(--primary)' : '2px solid var(--border)', cursor: 'pointer', background: method === 'instant' ? 'rgba(37,99,235,0.05)' : 'transparent', transition: 'all 0.2s' }}
+                      style={{ padding: '16px', borderRadius: '12px', border: method === 'instant' ? '2px solid var(--primary)' : '2px solid var(--border)', cursor: 'pointer', background: method === 'instant' ? 'rgba(37,99,235,0.05)' : 'transparent', transition: 'all 0.2s' }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                        <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: '2px solid', borderColor: method === 'instant' ? 'var(--primary)' : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {method === 'instant' && <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'var(--primary)' }}></div>}
+                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: '2px solid', borderColor: method === 'instant' ? 'var(--primary)' : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {method === 'instant' && <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--primary)' }}></div>}
                         </div>
-                        <strong style={{ fontSize: '1.1rem' }}>Pay Full Amount</strong>
+                        <strong style={{ fontSize: '1.05rem' }}>Pay Full Amount</strong>
                       </div>
-                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginLeft: '36px' }}>Pay 100% today to complete your order instantly.</p>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginLeft: '34px' }}>Pay 100% today to complete your order instantly.</p>
                     </div>
 
+                    {/* Installment */}
                     <div 
                       onClick={() => setMethod('installment')}
-                      style={{ padding: '20px', borderRadius: '12px', border: method === 'installment' ? '2px solid var(--primary)' : '2px solid var(--border)', cursor: 'pointer', background: method === 'installment' ? 'rgba(37,99,235,0.05)' : 'transparent', transition: 'all 0.2s' }}
+                      style={{ padding: '16px', borderRadius: '12px', border: method === 'installment' ? '2px solid var(--primary)' : '2px solid var(--border)', cursor: 'pointer', background: method === 'installment' ? 'rgba(37,99,235,0.05)' : 'transparent', transition: 'all 0.2s' }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                        <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: '2px solid', borderColor: method === 'installment' ? 'var(--primary)' : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {method === 'installment' && <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'var(--primary)' }}></div>}
+                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: '2px solid', borderColor: method === 'installment' ? 'var(--primary)' : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {method === 'installment' && <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--primary)' }}></div>}
                         </div>
-                        <strong style={{ fontSize: '1.1rem' }}>Pay 50% Now, 50% Later</strong>
+                        <strong style={{ fontSize: '1.05rem' }}>Pay 50% Now, 50% Later</strong>
                       </div>
-                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginLeft: '36px' }}>Pay half today, and the remaining balance within 2 weeks. <br/><strong style={{color: 'var(--warning)'}}>*A 4% commission applies.</strong></p>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginLeft: '34px' }}>Pay half today, and the remaining balance within 2 weeks. <br/><strong style={{color: 'var(--warning)'}}>*A 4% commission applies.</strong></p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="card" style={{ padding: '32px', position: 'sticky', top: '100px' }}>
+              {/* Summary Box */}
+              <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '24px' }} className="summary-box">
                 <h3 style={{ fontWeight: '700', marginBottom: '20px' }}>Order Summary</h3>
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginBottom: '12px' }}>
@@ -177,7 +188,7 @@ export default function PaymentPage() {
                   <span>₦{deliveryFee.toLocaleString()}</span>
                 </div>
                 {method === 'installment' && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginBottom: '16px', color: 'var(--warning)', fontWeight: 600 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '12px', color: 'var(--warning)', fontWeight: 600 }}>
                     <span>Installment Fee (4%)</span>
                     <span>+₦{installmentCommission.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                   </div>
@@ -201,30 +212,60 @@ export default function PaymentPage() {
             </div>
           )}
 
+          {/* STEP 2: Bank Transfer & Upload */}
           {step === 2 && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '32px', alignItems: 'start' }} className="payment-grid">
+            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '24px', alignItems: 'start' }} className="payment-grid">
               
               <div>
-                <div className="card" style={{ marginBottom: '24px', padding: '32px' }}>
-                  <h3 style={{ fontWeight: '700', marginBottom: '16px' }}>1. Bank Transfer</h3>
-                  <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>
+                {/* Delivery Details Card */}
+                <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '24px', marginBottom: '24px' }}>
+                  <h3 style={{ fontWeight: '700', marginBottom: '16px' }}>1. Delivery Details</h3>
+                  
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: '6px', fontSize: '0.9rem' }}>Delivery Landmark <span style={{ color: 'var(--danger)' }}>*</span></label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. Opposite Shoprite, Maiduguri" 
+                      value={landmark}
+                      onChange={(e) => setLandmark(e.target.value)}
+                      required 
+                      style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', outline: 'none' }} 
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: '6px', fontSize: '0.9rem' }}>Alternative Phone (Optional)</label>
+                    <input 
+                      type="tel" 
+                      placeholder="+234 800 000 0000" 
+                      value={altPhone}
+                      onChange={(e) => setAltPhone(e.target.value)}
+                      style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', outline: 'none' }} 
+                    />
+                  </div>
+                </div>
+
+                {/* Bank Details Card */}
+                <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '24px', marginBottom: '24px' }}>
+                  <h3 style={{ fontWeight: '700', marginBottom: '16px' }}>2. Bank Transfer</h3>
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', fontSize: '0.9rem' }}>
                     Please transfer <strong>₦{amountToPay.toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong> to the account below.
                   </p>
                   
-                  <div style={{ background: 'var(--border-light)', borderRadius: '12px', padding: '24px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <div style={{ background: 'var(--bg)', borderRadius: '12px', padding: '20px', border: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '0.9rem' }}>
                       <span style={{ color: 'var(--text-secondary)' }}>Bank Name</span>
                       <strong>{BANK_DETAILS.bankName}</strong>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '0.9rem' }}>
                       <span style={{ color: 'var(--text-secondary)' }}>Account Name</span>
                       <strong>{BANK_DETAILS.accountName}</strong>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem', flexWrap: 'wrap', gap: '8px' }}>
                       <span style={{ color: 'var(--text-secondary)' }}>Account No.</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <strong style={{ fontSize: '1.2rem', letterSpacing: '2px' }}>{BANK_DETAILS.accountNumber}</strong>
-                        <button onClick={copyAccount} className="btn btn-sm btn-secondary">
+                        <strong style={{ fontSize: '1.1rem', letterSpacing: '1px' }}>{BANK_DETAILS.accountNumber}</strong>
+                        <button onClick={copyAccount} style={{ background: 'var(--border)', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text)', cursor: 'pointer' }}>
                           <i className={`fas ${copied ? 'fa-check' : 'fa-copy'}`}></i> {copied ? 'Copied' : 'Copy'}
                         </button>
                       </div>
@@ -232,96 +273,85 @@ export default function PaymentPage() {
                   </div>
                 </div>
 
-                <div className="card" style={{ padding: '32px' }}>
-                  <h3 style={{ fontWeight: '700', marginBottom: '16px' }}>2. Upload Receipt</h3>
+                {/* Upload Receipt Card */}
+                <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '24px' }}>
+                  <h3 style={{ fontWeight: '700', marginBottom: '16px' }}>3. Upload Receipt</h3>
+                  
                   {!receiptPreview ? (
-                    <label htmlFor="receipt-input" style={{ display: 'block', border: '2px dashed var(--border)', borderRadius: '12px', padding: '40px 20px', textAlign: 'center', cursor: 'pointer', background: 'var(--bg)' }}>
-                      <i className="fas fa-cloud-upload-alt" style={{ fontSize: '2.5rem', color: 'var(--primary)', marginBottom: '12px' }}></i>
-                      <p style={{ fontWeight: '600', marginBottom: '4px' }}>Click to upload receipt</p>
-                      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>JPG, PNG · Max 5MB</p>
+                    <label htmlFor="receipt-input" style={{ display: 'block', border: '2px dashed var(--border)', borderRadius: '12px', padding: '32px 16px', textAlign: 'center', cursor: 'pointer', background: 'var(--bg)' }}>
+                      <i className="fas fa-cloud-upload-alt" style={{ fontSize: '2rem', color: 'var(--primary)', marginBottom: '12px' }}></i>
+                      <p style={{ fontWeight: '600', marginBottom: '4px', fontSize: '0.95rem' }}>Click to upload receipt</p>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>JPG, PNG · Max 5MB</p>
                       <input id="receipt-input" type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
                     </label>
                   ) : (
                     <div style={{ textAlign: 'center' }}>
-                      <img src={receiptPreview} alt="Receipt" style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '8px', marginBottom: '16px', border: '1px solid var(--border)' }} />
-                      <button className="btn btn-sm btn-secondary" onClick={() => { setReceipt(null); setReceiptPreview(null); }}>
+                      <img src={receiptPreview} alt="Receipt" style={{ maxWidth: '100%', maxHeight: '220px', borderRadius: '8px', marginBottom: '16px', border: '1px solid var(--border)' }} />
+                      <button onClick={() => { setReceipt(null); setReceiptPreview(null); }} style={{ background: 'transparent', border: '1px solid var(--border)', padding: '8px 16px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', color: 'var(--text)' }}>
                         <i className="fas fa-redo"></i> Change Image
                       </button>
                     </div>
                   )}
-                  {/* Terms Checkbox */}
-<div style={{ 
-  display: 'flex', alignItems: 'flex-start', gap: '12px', 
-  padding: '16px', background: 'var(--bg)', border: '1px solid var(--border)',
-  borderRadius: '12px', marginTop: '24px' 
-}}>
-  <input 
-    type="checkbox" 
-    id="agreeTerms"
-    checked={agreedToTerms}
-    onChange={(e) => setAgreedToTerms(e.target.checked)}
-    style={{ 
-      width: '20px', height: '20px', marginTop: '2px', 
-      cursor: 'pointer', accentColor: 'var(--primary)', flexShrink: 0 
-    }}
-  />
-  <label htmlFor="agreeTerms" style={{ fontSize: '0.88rem', cursor: 'pointer', lineHeight: 1.6 }}>
-    I agree to the{' '}
-    <a href="/policies#terms" target="_blank" style={{ color: 'var(--primary)', fontWeight: 600 }}>Terms of Service</a>,{' '}
-    <a href="/policies#refund" target="_blank" style={{ color: 'var(--primary)', fontWeight: 600 }}>Refund Policy</a>, and{' '}
-    <a href="/policies#installments" target="_blank" style={{ color: 'var(--primary)', fontWeight: 600 }}>Installment Terms</a>{' '}
-    (including the 4% installment commission and 3-week payment deadline).
-  </label>
-</div>
 
-{/* Update the Complete Order button to require the checkbox */}
-<button 
-  className="btn-primary" 
-  style={{ width: '100%', marginTop: '16px', padding: '16px' }} 
-  onClick={handleSubmitOrder} 
-  disabled={loading || !receipt || !agreedToTerms}
->
-  {loading ? <><i className="fas fa-spinner fa-spin"></i> Submitting...</> : <><i className="fas fa-check"></i> Complete Order</>}
-</button>
-                  
-                  <button className="btn-primary" style={{ width: '100%', marginTop: '24px', padding: '16px' }} onClick={handleSubmitOrder} disabled={loading || !receipt}>
+                  {/* Terms Checkbox */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '16px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '12px', marginTop: '24px' }}>
+                    <input 
+                      type="checkbox" 
+                      id="agreeTerms"
+                      checked={agreedToTerms}
+                      onChange={(e) => setAgreedToTerms(e.target.checked)}
+                      style={{ width: '18px', height: '18px', marginTop: '2px', cursor: 'pointer', accentColor: 'var(--primary)', flexShrink: 0 }}
+                    />
+                    <label htmlFor="agreeTerms" style={{ fontSize: '0.85rem', cursor: 'pointer', lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+                      I agree to the <a href="/policies#terms" target="_blank" style={{ color: 'var(--primary)', fontWeight: 600 }}>Terms</a>, <a href="/policies#refund" target="_blank" style={{ color: 'var(--primary)', fontWeight: 600 }}>Refund Policy</a>, and <a href="/policies#installments" target="_blank" style={{ color: 'var(--primary)', fontWeight: 600 }}>Installment Terms</a> (incl. the 4% commission and 3-week deadline).
+                    </label>
+                  </div>
+
+                  <button 
+                    className="btn-primary" 
+                    style={{ width: '100%', marginTop: '16px', padding: '16px', justifyContent: 'center', opacity: (loading || !receipt || !agreedToTerms) ? 0.6 : 1 }} 
+                    onClick={handleSubmitOrder} 
+                    disabled={loading || !receipt || !agreedToTerms}
+                  >
                     {loading ? <><i className="fas fa-spinner fa-spin"></i> Submitting...</> : <><i className="fas fa-check"></i> Complete Order</>}
                   </button>
                 </div>
               </div>
 
-              <div className="card" style={{ padding: '32px', position: 'sticky', top: '100px' }}>
+              {/* Summary Box Step 2 */}
+              <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '24px' }} className="summary-box">
                 <h3 style={{ fontWeight: '700', marginBottom: '20px' }}>Summary</h3>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '1.1rem', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '1.05rem', marginBottom: '12px' }}>
                   <span>Total</span>
                   <span>₦{finalTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--primary)', fontWeight: 700, marginBottom: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--primary)', fontWeight: 700, marginBottom: '24px', fontSize: '1.05rem' }}>
                   <span>Paying Now</span>
                   <span>₦{amountToPay.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                 </div>
                 {method === 'installment' && (
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '24px', background: 'rgba(245,158,11,0.1)', padding: '12px', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '24px', background: 'rgba(245,158,11,0.1)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(245,158,11,0.2)' }}>
                     <strong>Note:</strong> You will pay ₦{remainingBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} later to complete this order.
                   </div>
                 )}
-                <button className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setStep(1)}>
+                <button onClick={() => setStep(1)} style={{ width: '100%', padding: '14px', background: 'transparent', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                   <i className="fas fa-arrow-left"></i> Back
                 </button>
               </div>
             </div>
           )}
 
+          {/* STEP 3: Success */}
           {step === 3 && orderData && (
-            <div className="card" style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center', padding: '48px 32px' }}>
-              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--success)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', margin: '0 auto 24px' }}>
+            <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', maxWidth: '600px', margin: '0 auto', textAlign: 'center', padding: '48px 24px' }}>
+              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(16,185,129,0.1)', color: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', margin: '0 auto 24px' }}>
                 <i className="fas fa-check"></i>
               </div>
-              <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '12px' }}>Order Submitted!</h1>
-              <p style={{ color: 'var(--text-secondary)', marginBottom: '32px' }}>
+              <h1 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: '12px' }}>Order Submitted!</h1>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '32px', lineHeight: 1.6, fontSize: '0.95rem' }}>
                 Your order <strong>#{orderData._id.slice(-8).toUpperCase()}</strong> has been received. We will verify your receipt and process it within 24 hours.
               </p>
-              <Link href="/dashboard" className="btn-primary" style={{ padding: '14px 32px', borderRadius: '100px' }}>
+              <Link href="/dashboard" className="btn-primary" style={{ padding: '14px 32px', borderRadius: '100px', display: 'inline-flex' }}>
                 Go to Dashboard
               </Link>
             </div>
@@ -330,6 +360,21 @@ export default function PaymentPage() {
         </div>
       </main>
       <Footer />
+
+      {/* Mobile Responsiveness CSS */}
+      <style jsx global>{`
+        @media (max-width: 768px) {
+          /* Stack the two columns */
+          .payment-grid {
+            grid-template-columns: 1fr !important;
+            gap: 20px !important;
+          }
+          /* Make summaries non-sticky on mobile */
+          .summary-box {
+            position: static !important;
+          }
+        }
+      `}</style>
     </>
   );
 }

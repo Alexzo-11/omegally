@@ -10,6 +10,8 @@ const orderSchema = new mongoose.Schema({
     image: String,
     size: { type: String, default: '' },  // Added
     color: { type: String, default: '' }, // Added
+    landmark: { type: String, default: '' },
+altPhone: { type: String, default: '' },
   }],
   totalAmount: { type: Number, required: true },
   amountPaid: { type: Number, default: 0 },

@@ -35,13 +35,12 @@ export function AuthProvider({ children }) {
     return data;
   };
 
-  const register = async (name, email, password, phone) => {
-    const data = await auth.register({ name, email, password, phone });
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    setUser(data.user);
-    return data;
-  };
+const register = async (name, email, password, phone, address) => {
+  const res = await fetch('/api/auth/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, email, password, phone, address }),
+  });
 
   const logout = () => {
     localStorage.removeItem('token');
