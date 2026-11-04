@@ -14,23 +14,25 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      const data = await login(email, password);
-      if (data.user.role !== 'admin') {
-        setError('This account is not an admin.');
-        setLoading(false);
-        return;
-      }
-      router.push('/admin/products');
-    } catch (err) {
-      setError(err.message || 'Login failed');
-    } finally {
-      setLoading(false);
+  e.preventDefault();
+  setError('');
+  setLoading(true);
+  try {
+    // Await the user object from the context
+    const loggedInUser = await login(email, password);
+    
+    // Check if the returned user is an admin
+    if (loggedInUser && loggedInUser.role === 'admin') {
+      router.push('/admin');
+    } else {
+      setError('Access denied. You are not an admin.');
     }
-  };
+  } catch (err) {
+    setError(err.message || 'Login failed');
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div style={{

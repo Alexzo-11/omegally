@@ -25,7 +25,7 @@ export default function HowItWorks() {
       <div className="section-container">
         <div className="hiw-header">
           <span className="section-eyebrow">HOW IT WORKS</span>
-          <h2 className="section-title">From Cart to Doorstep in 3 Steps</h2>
+          <h2 className="section-title">From Cart to Pickup Point in 3 Steps</h2>
           <p className="section-subtitle">
             A simple, secure way to shop — no more scattered product links.
           </p>
