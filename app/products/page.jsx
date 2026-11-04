@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import ProductCard from '@/components/ProductCard';
 
-export default function ProductsPage() {
+// Inner component that uses useSearchParams
+function ProductsContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get('q') || '';
   const initialCategory = searchParams.get('category') || 'All';
@@ -41,52 +42,67 @@ export default function ProductsPage() {
   });
 
   return (
+    <main style={{ paddingTop: 'calc(var(--nav-height) + 80px)', paddingBottom: '60px', background: 'var(--bg)' }}>
+      <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 24px' }}>
+        <h1 className="section-title">
+          {searchQuery ? `Search: "${searchQuery}"` : 'All Products'}
+        </h1>
+        <p className="section-subtitle" style={{ marginBottom: '24px' }}>
+          {searchQuery ? `${filtered.length} result${filtered.length === 1 ? '' : 's'} found` : 'Browse our collection of premium items.'}
+        </p>
+
+        <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '16px', marginBottom: '24px' }}>
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
+              style={{
+                padding: '8px 16px', borderRadius: '100px', border: '1px solid var(--border)',
+                background: activeCategory === cat ? 'var(--primary)' : 'var(--bg-elevated)',
+                color: activeCategory === cat ? '#fff' : 'var(--text-secondary)',
+                fontSize: '0.85rem', fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer', transition: 'all 0.2s ease'
+              }}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="products-grid">
+            {[...Array(10)].map((_, i) => <div key={i} className="skeleton-card" />)}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="empty-state">
+            <i className="fas fa-search"></i>
+            <h3>No products found</h3>
+            <p>Try a different search term or category.</p>
+          </div>
+        ) : (
+          <div className="products-grid">
+            {filtered.map((p) => <ProductCard key={p._id} product={p} />)}
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}
+
+// Default export wraps it in Suspense
+export default function ProductsPage() {
+  return (
     <>
       <Navbar />
-      <main style={{ paddingTop: 'calc(var(--nav-height) + 80px)', paddingBottom: '60px', background: 'var(--bg)' }}>
-        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 24px' }}>
-          <h1 className="section-title">
-            {searchQuery ? `Search: "${searchQuery}"` : 'All Products'}
-          </h1>
-          <p className="section-subtitle" style={{ marginBottom: '24px' }}>
-            {searchQuery ? `${filtered.length} result${filtered.length === 1 ? '' : 's'} found` : 'Browse our collection of premium items.'}
-          </p>
-
-          {/* Category Pills */}
-          <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '16px', marginBottom: '24px' }}>
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                style={{
-                  padding: '8px 16px', borderRadius: '100px', border: '1px solid var(--border)',
-                  background: activeCategory === cat ? 'var(--primary)' : 'var(--bg-elevated)',
-                  color: activeCategory === cat ? '#fff' : 'var(--text-secondary)',
-                  fontSize: '0.85rem', fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer', transition: 'all 0.2s ease'
-                }}
-              >
-                {cat}
-              </button>
-            ))}
+      <Suspense fallback={
+        <main style={{ paddingTop: 'calc(var(--nav-height) + 80px)', minHeight: '80vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+            <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', color: 'var(--primary)', marginBottom: '16px' }}></i>
+            <p>Loading products...</p>
           </div>
-
-          {loading ? (
-            <div className="products-grid">
-              {[...Array(10)].map((_, i) => <div key={i} className="skeleton-card" />)}
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="empty-state">
-              <i className="fas fa-search"></i>
-              <h3>No products found</h3>
-              <p>Try a different search term or category.</p>
-            </div>
-          ) : (
-            <div className="products-grid">
-              {filtered.map((p) => <ProductCard key={p._id} product={p} />)}
-            </div>
-          )}
-        </div>
-      </main>
+        </main>
+      }>
+        <ProductsContent />
+      </Suspense>
       <Footer />
     </>
   );
