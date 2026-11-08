@@ -15,8 +15,8 @@ export default function HowItWorks() {
     {
       num: '03',
       icon: 'fa-truck',
-      title: 'Fast Delivery',
-      text: 'Goods inside Maiduguri arrive within 48 hours. Orders / Goods outside Maiduguri arrive within 1 month of confirmed payment.',
+      title: 'Quick Delivery',
+      text: 'Pick up location within Maiduguri, Baga-Road, Post-Office, Unimaid. Special delivery to door Step charges apllies',
     },
   ];
 
@@ -48,15 +48,15 @@ export default function HowItWorks() {
           <div className="hiw-delivery-item">
             <i className="fas fa-map-marker-alt"></i>
             <div>
-              <strong>Goods Within Maiduguri</strong>
-              <span>Delivered in 24 hours</span>
+              <strong>Goods Arrival</strong>
+              <span>3rd week of the month, except for special orders</span>
             </div>
           </div>
           <div className="hiw-delivery-item">
             <i className="fas fa-globe"></i>
             <div>
-              <strong>Goods Coming Outside Maiduguri</strong>
-              <span>Delivered within 1 month</span>
+              <strong>Products within Maiduguri</strong>
+              <span>Delivered within 3hrs</span>
             </div>
           </div>
         </div>

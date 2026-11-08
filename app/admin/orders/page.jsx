@@ -7,6 +7,7 @@ export default function AdminOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [selected, setSelected] = useState(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   const loadOrders = async () => {
     setLoading(true);
@@ -58,13 +59,21 @@ export default function AdminOrdersPage() {
     setSelected(null);
   };
 
+  const formatPhoneForWhatsApp = (phone) => {
+    if (!phone) return '';
+    let cleaned = phone.replace(/\D/g, '');
+    if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
+    if (!cleaned.startsWith('234')) cleaned = '234' + cleaned;
+    return cleaned;
+  };
+
   const notifyCustomer = (phone, orderId) => {
     let targetPhone = phone;
     if (!targetPhone) {
       targetPhone = prompt("No phone number on file. Enter customer's WhatsApp number (e.g., 2348012345678):");
       if (!targetPhone) return;
     }
-    const cleanPhone = targetPhone.replace(/[^0-9]/g, '');
+    const cleanPhone = formatPhoneForWhatsApp(targetPhone);
     const msg = encodeURIComponent(`Hello! Your order #${orderId.slice(-6).toUpperCase()} has been confirmed. Thank you for shopping with Omegally!`);
     window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
   };
@@ -75,10 +84,31 @@ export default function AdminOrdersPage() {
       targetPhone = prompt("No phone number on file. Enter customer's WhatsApp number:");
       if (!targetPhone) return;
     }
-    const cleanPhone = targetPhone.replace(/[^0-9]/g, '');
+    const cleanPhone = formatPhoneForWhatsApp(targetPhone);
     const receiptLink = `${window.location.origin}/receipt/${orderId}`;
     const msg = encodeURIComponent(`Hello! Your payment for Order #${orderId.slice(-6).toUpperCase()} has been confirmed. \n\nHere is your receipt: ${receiptLink}\n\nThank you for shopping with Omegally!`);
     window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
+  };
+
+  // ✅ NEW: Handle Send Email
+  const handleSendEmail = async (orderId) => {
+    setSendingEmail(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/orders/${orderId}/send-receipt`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to send email');
+      
+      alert('✅ Receipt email sent successfully to the customer!');
+    } catch (err) {
+      alert(`❌ ${err.message}`);
+    } finally {
+      setSendingEmail(false);
+    }
   };
 
   const filteredOrders = filter === 'all' 
@@ -229,7 +259,7 @@ export default function AdminOrdersPage() {
                       onClick={() => sendReceiptWhatsApp(selected.user?.phone, selected._id)} 
                       style={{ flex: 1, background: '#25D366', color: '#fff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '0.85rem' }}
                     >
-                      <i className="fas fa-receipt"></i> Send Receipt
+                      <i className="fas fa-receipt"></i> WhatsApp Receipt
                     </button>
                   </div>
                 </div>
@@ -296,6 +326,15 @@ export default function AdminOrdersPage() {
                     <i className="fas fa-times-circle"></i> Reject
                   </button>
                 </div>
+
+                {/* Email Action (Full Width) */}
+                <button 
+                  onClick={() => handleSendEmail(selected._id)} 
+                  disabled={sendingEmail}
+                  style={{ width: '100%', marginTop: '10px', padding: '14px', background: '#4F46E5', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.9rem', cursor: sendingEmail ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', opacity: sendingEmail ? 0.7 : 1 }}
+                >
+                  {sendingEmail ? <><i className="fas fa-spinner fa-spin"></i> Sending Email...</> : <><i className="fas fa-envelope"></i> Email Receipt to Customer</>}
+                </button>
 
               </div>
             </div>

@@ -47,7 +47,9 @@ export const POST = withAdmin(async (req) => {
   description: body.description || '',
   price: Number(body.price),
   discountPrice: Number(body.discountPrice) || 0,
-  deliveryFee: Number(body.deliveryFee) || 0, // Add this
+  deliveryFee: Number(body.deliveryFee) || 0, // Add 
+  size: body.size || '', // Make sure this is here
+  color: body.color || '', // Make sure this is here
   stock: Number(body.stock) || 0,
   images: Array.isArray(body.images) ? body.images : [],
   videoUrl: body.videoUrl || '',

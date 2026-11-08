@@ -17,7 +17,7 @@ export default function AboutSection() {
     {
       icon: 'fa-truck',
       title: 'Fast Delivery',
-      text: 'Products ship within 24 hours of confirmed payment, straight to your door.',
+      text: 'Products avaliable on ground within Maiduguri is delivered within 3 hours of confirmed payment, straight to your door-step with delivery charges.',
     },
     {
       icon: 'fa-headset',

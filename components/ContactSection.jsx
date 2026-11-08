@@ -27,19 +27,19 @@ export default function ContactSection() {
             </p>
 
             <div className="contact-items">
-              <a href="https://wa.me/2348012345678" target="_blank" rel="noopener noreferrer" className="contact-item">
+              <a href="https://wa.me/2348106509069" target="_blank" rel="noopener noreferrer" className="contact-item">
                 <div className="contact-item-icon"><i className="fab fa-whatsapp"></i></div>
                 <div>
                   <strong>WhatsApp</strong>
-                  <span>+234 801 234 5678</span>
+                  <span>+234 810 6509 069</span>
                 </div>
               </a>
 
-              <a href="mailto:support@ecomflex.com" className="contact-item">
+              <a href="mailto:support@omegally.com" className="contact-item">
                 <div className="contact-item-icon"><i className="fas fa-envelope"></i></div>
                 <div>
                   <strong>Email</strong>
-                  <span>support@ecomflex.com</span>
+                  <span>support@omegally.com</span>
                 </div>
               </a>
 

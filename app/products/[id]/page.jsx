@@ -164,6 +164,44 @@ export default function ProductDetailPage() {
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--success)', fontWeight: 600, background: 'rgba(16,185,129,0.1)', padding: '8px 16px', borderRadius: '8px' }}><i className="fas fa-check-circle"></i> In Stock ({product.stock} available)</span>
                 )}
               </div>
+              {/* Price Block with Discount Logic */}
+<div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+  {product.discountPrice > 0 ? (
+    <>
+      <span style={{ fontSize: '2.2rem', fontWeight: 900, color: 'var(--primary)' }}>
+        ₦{product.discountPrice.toLocaleString()}
+      </span>
+      <span style={{ fontSize: '1.2rem', color: 'var(--text-tertiary)', textDecoration: 'line-through' }}>
+        ₦{product.price.toLocaleString()}
+      </span>
+      <span style={{ background: 'var(--danger)', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 700 }}>
+        SALE
+      </span>
+    </>
+  ) : (
+    <span style={{ fontSize: '2.2rem', fontWeight: 900, color: 'var(--primary)' }}>
+      ₦{product.price.toLocaleString()}
+    </span>
+  )}
+</div>
+
+{/* Size & Color Badges */}
+{(product.size || product.color) && (
+  <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
+    {product.size && (
+      <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', padding: '8px 16px', borderRadius: '8px' }}>
+        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '2px' }}>Size</span>
+        <strong style={{ fontSize: '0.95rem' }}>{product.size}</strong>
+      </div>
+    )}
+    {product.color && (
+      <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', padding: '8px 16px', borderRadius: '8px' }}>
+        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '2px' }}>Color</span>
+        <strong style={{ fontSize: '0.95rem' }}>{product.color}</strong>
+      </div>
+    )}
+  </div>
+)}
 
               <div style={{ background: 'var(--bg-elevated)', padding: '24px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', marginBottom: '32px' }}>
                 <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}><i className="fas fa-align-left" style={{ color: 'var(--primary)' }}></i> Description</h3>
