@@ -7,11 +7,15 @@ const CartContext = createContext();
 export function CartProvider({ children }) {
   const [cart, setCart] = useState([]);
 
+  // Load cart from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem('cart');
-    if (saved) { try { setCart(JSON.parse(saved)); } catch (e) {} }
+    if (saved) { 
+      try { setCart(JSON.parse(saved)); } catch (e) {} 
+    }
   }, []);
 
+  // Save cart to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('cart', JSON.stringify(cart));
   }, [cart]);
@@ -23,11 +27,20 @@ export function CartProvider({ children }) {
       
       const existing = prev.find((item) => item.cartItemId === cartItemId);
       if (existing) {
+        // If item exists, increase qty by the requested amount (default to 1 if not set)
         return prev.map((item) =>
-          item.cartItemId === cartItemId ? { ...item, qty: item.qty + 1 } : item
+          item.cartItemId === cartItemId 
+            ? { ...item, qty: item.qty + (product.qty || 1) } 
+            : item
         );
       }
-      return [...prev, { ...product, cartItemId, qty: 1 }];
+      
+      // If new item, add it with the requested qty (default to 1)
+      return [...prev, { 
+        ...product, 
+        cartItemId, 
+        qty: product.qty || 1 
+      }];
     });
   };
 
