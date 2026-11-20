@@ -9,17 +9,27 @@ export default function AdminOrdersPage() {
   const [selected, setSelected] = useState(null);
   const [sendingEmail, setSendingEmail] = useState(false);
 
+ // inside app/admin/orders/page.jsx
   const loadOrders = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('/api/orders', { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) {
-        const data = await res.json();
-        setOrders(data.orders || data || []);
+      if (!token) {
+        alert('You are not logged in. Please log out and log back in.');
+        return;
       }
+
+      const res = await fetch('/api/orders', { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to fetch orders');
+      }
+
+      setOrders(data.orders || []);
     } catch (e) {
       console.error(e);
+      alert(`Error loading orders: ${e.message}`); // This will tell you exactly what's wrong
     } finally {
       setLoading(false);
     }
