@@ -9,7 +9,7 @@ export default function Trending() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/products?limit=40')
+    fetch('/api/products?limit=200')
       .then((res) => res.json())
       .then((data) => {
         setProducts(data.products || []);

@@ -76,9 +76,18 @@ export default function RegisterPage() {
         </div>
 
         <div style={{ marginBottom: '16px' }}>
-          <label style={labelStyle}>Phone / WhatsApp (optional)</label>
-          <input type="tel" name="phone" value={form.phone} onChange={handleChange} placeholder="+234 800 000 0000" disabled={loading} style={inputStyle} />
-        </div>
+  <label style={labelStyle}>Phone / WhatsApp Number</label> {/* Removed (optional) */}
+  <input
+    type="tel"
+    name="phone"
+    value={form.phone}
+    onChange={handleChange}
+    placeholder="+234 800 000 0000"
+    required // <--- Add this line
+    disabled={loading}
+    style={inputStyle}
+  />
+</div>
 
         {/* NEW: Delivery Address */}
         <div style={{ marginBottom: '16px' }}>

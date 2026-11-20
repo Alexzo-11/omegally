@@ -35,11 +35,11 @@ export default function ContactSection() {
                 </div>
               </a>
 
-              <a href="mailto:support@omegally.com" className="contact-item">
+              <a href="mailto:omegallyofficial@gmail.com" className="contact-item">
                 <div className="contact-item-icon"><i className="fas fa-envelope"></i></div>
                 <div>
                   <strong>Email</strong>
-                  <span>support@omegally.com</span>
+                  <span>omegallyofficial@gmail.com</span>
                 </div>
               </a>
 
@@ -55,7 +55,7 @@ export default function ContactSection() {
                 <div className="contact-item-icon"><i className="fas fa-clock"></i></div>
                 <div>
                   <strong>Support Hours</strong>
-                  <span>Mon – Sat, 9am – 7pm</span>
+                  <span>Mon – Sat, 7am – 10pm</span>
                 </div>
               </div>
             </div>

@@ -18,7 +18,7 @@ function ProductsContent() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/products?page=1&limit=100')
+    fetch('/api/products?page=1&limit=1000')
       .then((r) => r.json())
       .then((d) => setAllProducts(d.products || []))
       .catch(console.error)

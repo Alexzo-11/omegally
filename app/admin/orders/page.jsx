@@ -247,7 +247,14 @@ export default function AdminOrdersPage() {
                     {selected.landmark && <div><strong>Landmark:</strong> {selected.landmark}</div>}
                     {selected.user?.address && <div><strong>Address:</strong> {selected.user.address}</div>}
                   </div>
-                  
+                  {selected.note && (
+  <div style={{ marginTop: '16px', background: 'rgba(37,99,235,0.05)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(37,99,235,0.2)' }}>
+    <strong style={{ fontSize: '0.85rem', color: 'var(--primary)', display: 'block', marginBottom: '4px' }}>
+      <i className="fas fa-sticky-note"></i> Customer Note
+    </strong>
+    <p style={{ fontSize: '0.9rem', margin: 0 }}>{selected.note}</p>
+  </div>
+)}
                   <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
                     <button 
                       onClick={() => notifyCustomer(selected.user?.phone, selected._id)} 

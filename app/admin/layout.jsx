@@ -24,6 +24,7 @@ export default function AdminLayout({ children }) {
     { href: '/admin', label: 'Overview', icon: 'fa-chart-pie' },
     { href: '/admin/products', label: 'Products', icon: 'fa-box' },
     { href: '/admin/orders', label: 'Orders', icon: 'fa-shopping-bag' },
+     { href: '/admin/installments', label: 'Installments', icon: 'fa-hand-holding-usd' },
     { href: '/admin/customers', label: 'Customers', icon: 'fa-users' }, // <-- ADDED
     { href: '/admin/ads', label: 'Manage Ads', icon: 'fa-bullhorn' },
     { href: '/admin/products/new', label: 'Upload Product', icon: 'fa-cloud-upload-alt' },

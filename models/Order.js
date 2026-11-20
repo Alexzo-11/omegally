@@ -24,6 +24,7 @@ const OrderSchema = new mongoose.Schema({
   installmentWeeks: { type: Number, default: 1 },
   landmark: { type: String, default: '' },
   altPhone: { type: String, default: '' },
+  note: { type: String, default: '' },
 }, { timestamps: true });
 
 export default mongoose.models.Order || mongoose.model('Order', OrderSchema);

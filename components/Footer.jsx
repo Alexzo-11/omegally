@@ -75,7 +75,7 @@ export default function Footer() {
               </li>
               <li style={{ display: 'flex', gap: '12px', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
                 <i className="fas fa-envelope" style={{ color: 'var(--primary)', marginTop: '4px' }}></i>
-                <span>support@omegally.com</span>
+                <span>omegallyofficial@gmail.com</span>
               </li>
             </ul>
           </div>

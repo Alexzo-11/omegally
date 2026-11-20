@@ -9,6 +9,7 @@ export default function ReceiptPage() {
   const { id } = useParams();
   const router = useRouter();
   const [order, setOrder] = useState(null);
+  const [downloading, setDownloading] = useState(false);
   const receiptRef = useRef(null);
 
   useEffect(() => {
@@ -24,10 +25,11 @@ export default function ReceiptPage() {
 
   const handleDownloadImage = async () => {
     if (!receiptRef.current) return;
+    setDownloading(true);
     try {
       const canvas = await html2canvas(receiptRef.current, {
         scale: 2, // High resolution
-        backgroundColor: '#ffffff', // Ensure white background even in dark mode
+        backgroundColor: '#ffffff', // Force white background for the image
         useCORS: true,
         logging: false,
       });
@@ -39,6 +41,8 @@ export default function ReceiptPage() {
     } catch (err) {
       alert('Failed to download image. Please try again.');
       console.error(err);
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -87,14 +91,16 @@ export default function ReceiptPage() {
       >
         
         {/* Header */}
-        <div style={{ background: 'linear-gradient(135deg, #2563EB, #1D4ED8)', padding: '40px 24px', textAlign: 'center', color: '#fff', position: 'relative' }}>
-          <div style={{ position: 'absolute', top: '-30px', left: '-30px', width: '100px', height: '100px', background: 'rgba(255,255,255,0.1)', borderRadius: '50%' }} />
+        <div style={{ background: '#0F172A', padding: '40px 24px', textAlign: 'center', color: '#fff', position: 'relative' }}>
+          {/* Decorative circles */}
+          <div style={{ position: 'absolute', top: '-30px', left: '-30px', width: '100px', height: '100px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }} />
           <div style={{ position: 'absolute', bottom: '-50px', right: '-30px', width: '140px', height: '140px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }} />
           
+          {/* Logo with filter that works on download */}
           <img src="/logo.png" alt="Omegally" style={{ height: '48px', objectFit: 'contain', marginBottom: '20px', filter: 'brightness(0) invert(1)' }} />
           
-          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '56px', height: '56px', background: 'rgba(255,255,255,0.2)', borderRadius: '50%', marginBottom: '12px' }}>
-            <i className="fas fa-check" style={{ fontSize: '1.5rem' }}></i>
+          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '56px', height: '56px', background: 'rgba(37,99,235,0.2)', border: '1px solid rgba(37,99,235,0.4)', borderRadius: '50%', marginBottom: '12px' }}>
+            <i className="fas fa-check" style={{ fontSize: '1.5rem', color: '#60A5FA' }}></i>
           </div>
           
           <h1 style={{ fontSize: '1rem', fontWeight: 600, opacity: 0.9, marginBottom: '4px' }}>Payment Receipt</h1>
@@ -121,12 +127,13 @@ export default function ReceiptPage() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: '#64748b', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}><i className="fas fa-info-circle"></i> Status</span>
+              {/* UPDATED: Shows SUCCESSFUL if paid */}
               <span style={{ 
                 background: order.paymentStatus === 'paid' ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)', 
                 color: order.paymentStatus === 'paid' ? '#10B981' : '#F59E0B', 
                 padding: '4px 12px', borderRadius: '100px', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' 
               }}>
-                {order.paymentStatus === 'paid' ? 'Confirmed' : 'Pending Review'}
+                {order.paymentStatus === 'paid' ? 'Successful' : 'Pending Review'}
               </span>
             </div>
             {order.user?.name && (
@@ -137,10 +144,10 @@ export default function ReceiptPage() {
             )}
           </div>
           
-          {/* Dashed Separator with cutouts */}
+          {/* Dashed Separator with cutouts - Changed to WHITE to match card background for downloads */}
           <div style={{ borderTop: '2px dashed #e5e7eb', margin: '0 -28px 24px', position: 'relative' }}>
-            <div style={{ position: 'absolute', top: '-12px', left: '-12px', width: '24px', height: '24px', background: 'var(--bg)', borderRadius: '50%' }} />
-            <div style={{ position: 'absolute', top: '-12px', right: '-12px', width: '24px', height: '24px', background: 'var(--bg)', borderRadius: '50%' }} />
+            <div style={{ position: 'absolute', top: '-12px', left: '-12px', width: '24px', height: '24px', background: '#ffffff', borderRadius: '50%' }} />
+            <div style={{ position: 'absolute', top: '-12px', right: '-12px', width: '24px', height: '24px', background: '#ffffff', borderRadius: '50%' }} />
           </div>
 
           {/* Items */}
@@ -151,7 +158,11 @@ export default function ReceiptPage() {
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.95rem' }}>
                 <div style={{ paddingRight: '16px' }}>
                   <div style={{ fontWeight: 600 }}>{item.title || item.name}</div>
-                  <div style={{ color: '#64748b', fontSize: '0.8rem' }}>Qty: {item.qty || item.quantity} × ₦{item.price.toLocaleString()}</div>
+                  <div style={{ color: '#64748b', fontSize: '0.8rem' }}>
+                    Qty: {item.qty || item.quantity} × ₦{item.price.toLocaleString()}
+                    {item.size && ` · Size: ${item.size}`}
+                    {item.color && ` · Color: ${item.color}`}
+                  </div>
                 </div>
                 <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>₦{(item.price * (item.qty || item.quantity)).toLocaleString()}</span>
               </div>
@@ -198,15 +209,15 @@ export default function ReceiptPage() {
 
         {/* Footer */}
         <div style={{ background: '#f8fafc', padding: '24px', textAlign: 'center', fontSize: '0.85rem', color: '#64748b', borderTop: '1px solid #e5e7eb' }}>
-          Thank you for shopping with Omegally. <br/> For support, contact <strong style={{ color: '#0f172a' }}>support@omegally.com</strong>
+          Thank you for shopping with Omegally. <br/> For support, contact <strong style={{ color: '#0f172a' }}>omegallyofficial@gmail.com</strong>
         </div>
       </div>
 
       {/* Action Buttons */}
       <div className="no-print" style={{ width: '100%', maxWidth: '460px', display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '24px' }}>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button onClick={handleDownloadImage} className="btn-primary" style={{ flex: 1, justifyContent: 'center', padding: '14px', borderRadius: '100px' }}>
-            <i className="fas fa-image"></i> Save Image
+          <button onClick={handleDownloadImage} disabled={downloading} className="btn-primary" style={{ flex: 1, justifyContent: 'center', padding: '14px', borderRadius: '100px', opacity: downloading ? 0.7 : 1 }}>
+            {downloading ? <><i className="fas fa-spinner fa-spin"></i> Saving...</> : <><i className="fas fa-image"></i> Save Image</>}
           </button>
           <button onClick={handlePrint} style={{ flex: 1, background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text)', padding: '14px', borderRadius: '100px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
             <i className="fas fa-file-pdf"></i> Save PDF

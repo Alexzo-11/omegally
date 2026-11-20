@@ -19,7 +19,8 @@ export default function PaymentPage() {
   const { cart, clearCart } = useCart();
   const router = useRouter();
 
-  const [method, setMethod] = useState('instant');
+  // 'instant' | 'installment_2' | 'installment_4'
+  const [method, setMethod] = useState('instant'); 
   const [receipt, setReceipt] = useState(null);
   const [receiptPreview, setReceiptPreview] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -27,8 +28,10 @@ export default function PaymentPage() {
   const [orderData, setOrderData] = useState(null);
   const [copied, setCopied] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  
   const [landmark, setLandmark] = useState('');
   const [altPhone, setAltPhone] = useState('');
+  const [note, setNote] = useState('');
 
   useEffect(() => {
     if (cart.length === 0 && step < 3) router.push('/products');
@@ -37,16 +40,29 @@ export default function PaymentPage() {
 
   if (cart.length === 0 && step < 3) return null;
 
-  // Calculations
+  // --- CALCULATIONS ---
   const cartSubtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
   const deliveryFee = cart.reduce((s, i) => s + (i.deliveryFee || 0) * i.qty, 0);
   const baseTotal = cartSubtotal + deliveryFee;
 
-  const installmentCommission = method === 'installment' ? baseTotal * 0.04 : 0;
-  const finalTotal = baseTotal + installmentCommission;
-  
-  const amountToPay = method === 'installment' ? finalTotal / 2 : finalTotal;
-  const remainingBalance = finalTotal - amountToPay;
+  let installmentCommission = 0;
+  let finalTotal = baseTotal;
+  let amountToPay = finalTotal;
+  let remainingBalance = 0;
+
+  if (method === 'installment_2') {
+    // 4% interest for 2-part plan
+    installmentCommission = baseTotal * 0.04;
+    finalTotal = baseTotal + installmentCommission;
+    amountToPay = finalTotal / 2;
+    remainingBalance = finalTotal - amountToPay;
+  } else if (method === 'installment_4') {
+    // 8% interest for 4-part plan
+    installmentCommission = baseTotal * 0.08;
+    finalTotal = baseTotal + installmentCommission;
+    amountToPay = finalTotal * 0.50; // 50% upfront
+    remainingBalance = finalTotal * 0.50; // 25% + 15% + 10% later
+  }
 
   const copyAccount = () => {
     navigator.clipboard.writeText(BANK_DETAILS.accountNumber);
@@ -69,8 +85,8 @@ export default function PaymentPage() {
   const handleSubmitOrder = async () => {
     if (!receipt) return alert('Please upload your payment receipt.');
     if (!landmark.trim()) return alert('Please provide a delivery landmark.');
-    setLoading(true);
     
+    setLoading(true);
     try {
       const token = localStorage.getItem('token');
       const res = await fetch('/api/orders', {
@@ -88,12 +104,13 @@ export default function PaymentPage() {
           })),
           totalAmount: finalTotal,
           amountPaid: amountToPay,
-          paymentMethod: method,
-          weeks: method === 'installment' ? 2 : 1,
+          paymentMethod: method === 'instant' ? 'instant' : 'installment',
+          weeks: method === 'installment_2' ? 2 : method === 'installment_4' ? 4 : 1,
           receiptDataUrl: receiptPreview,
           bankDetails: BANK_DETAILS,
           landmark,
           altPhone,
+          note,
         }),
       });
       
@@ -110,24 +127,20 @@ export default function PaymentPage() {
     }
   };
 
+  // Helper to format currency
+  const fmt = (num) => `₦${num.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+
   return (
     <>
       <Navbar />
       <main style={{ paddingTop: 'calc(var(--nav-height) + 40px)', paddingBottom: '100px', minHeight: '80vh', background: 'var(--bg)' }}>
-        
-        {/* Centered Wrapper with mobile padding */}
         <div style={{ maxWidth: '900px', margin: '0 auto', padding: '0 16px' }}>
           
           {/* Step Indicator */}
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '40px', flexWrap: 'wrap' }}>
             {[1, 2, 3].map((n) => (
               <div key={n} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{
-                  width: '30px', height: '30px', borderRadius: '50%',
-                  background: step >= n ? 'var(--primary)' : 'var(--border)',
-                  color: step >= n ? '#fff' : 'var(--text-secondary)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '0.8rem',
-                }}>{n}</div>
+                <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: step >= n ? 'var(--primary)' : 'var(--border)', color: step >= n ? '#fff' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '0.8rem' }}>{n}</div>
                 <span style={{ fontSize: '0.8rem', fontWeight: step >= n ? '600' : '400', color: step >= n ? 'var(--text)' : 'var(--text-secondary)' }}>
                   {n === 1 ? 'Choose Plan' : n === 2 ? 'Pay & Upload' : 'Confirmed'}
                 </span>
@@ -144,33 +157,40 @@ export default function PaymentPage() {
                   <h3 style={{ fontWeight: '700', fontSize: '1.2rem', marginBottom: '20px' }}>Select Payment Method</h3>
                   
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {/* Instant Payment */}
-                    <div 
-                      onClick={() => setMethod('instant')}
-                      style={{ padding: '16px', borderRadius: '12px', border: method === 'instant' ? '2px solid var(--primary)' : '2px solid var(--border)', cursor: 'pointer', background: method === 'instant' ? 'rgba(37,99,235,0.05)' : 'transparent', transition: 'all 0.2s' }}
-                    >
+                    
+                    {/* 1. Instant Payment */}
+                    <div onClick={() => setMethod('instant')} style={{ padding: '16px', borderRadius: '12px', border: method === 'instant' ? '2px solid var(--primary)' : '2px solid var(--border)', cursor: 'pointer', background: method === 'instant' ? 'rgba(37,99,235,0.05)' : 'transparent', transition: 'all 0.2s' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
                         <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: '2px solid', borderColor: method === 'instant' ? 'var(--primary)' : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           {method === 'instant' && <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--primary)' }}></div>}
                         </div>
                         <strong style={{ fontSize: '1.05rem' }}>Pay Full Amount</strong>
                       </div>
-                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginLeft: '34px' }}>Pay 100% today to complete your order instantly.</p>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginLeft: '34px' }}>Pay 100% today. No extra fees.</p>
                     </div>
 
-                    {/* Installment */}
-                    <div 
-                      onClick={() => setMethod('installment')}
-                      style={{ padding: '16px', borderRadius: '12px', border: method === 'installment' ? '2px solid var(--primary)' : '2px solid var(--border)', cursor: 'pointer', background: method === 'installment' ? 'rgba(37,99,235,0.05)' : 'transparent', transition: 'all 0.2s' }}
-                    >
+                    {/* 2. 2-Part Installment (4%) */}
+                    <div onClick={() => setMethod('installment_2')} style={{ padding: '16px', borderRadius: '12px', border: method === 'installment_2' ? '2px solid var(--primary)' : '2px solid var(--border)', cursor: 'pointer', background: method === 'installment_2' ? 'rgba(37,99,235,0.05)' : 'transparent', transition: 'all 0.2s' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: '2px solid', borderColor: method === 'installment' ? 'var(--primary)' : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          {method === 'installment' && <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--primary)' }}></div>}
+                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: '2px solid', borderColor: method === 'installment_2' ? 'var(--primary)' : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {method === 'installment_2' && <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--primary)' }}></div>}
                         </div>
                         <strong style={{ fontSize: '1.05rem' }}>Pay 50% Now, 50% Later</strong>
                       </div>
-                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginLeft: '34px' }}>Pay half today, and the remaining balance within 2 weeks. <br/><strong style={{color: 'var(--warning)'}}>*A 4% commission applies.</strong></p>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginLeft: '34px' }}>Pay half today, half within 2 weeks. <br/><strong style={{ color: 'var(--warning)' }}>*A 4% service fee applies.</strong></p>
                     </div>
+
+                    {/* 3. 4-Part Installment (8%) */}
+                    <div onClick={() => setMethod('installment_4')} style={{ padding: '16px', borderRadius: '12px', border: method === 'installment_4' ? '2px solid var(--primary)' : '2px solid var(--border)', cursor: 'pointer', background: method === 'installment_4' ? 'rgba(37,99,235,0.05)' : 'transparent', transition: 'all 0.2s' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: '2px solid', borderColor: method === 'installment_4' ? 'var(--primary)' : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {method === 'installment_4' && <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--primary)' }}></div>}
+                        </div>
+                        <strong style={{ fontSize: '1.05rem' }}>Split into 4 Payments</strong>
+                      </div>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginLeft: '34px' }}>Pay 50% today, then 25%, 15%, and 10% over 8 weeks. <br/><strong style={{ color: 'var(--warning)' }}>*An 8% service fee applies.</strong></p>
+                    </div>
+
                   </div>
                 </div>
               </div>
@@ -181,16 +201,16 @@ export default function PaymentPage() {
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginBottom: '12px' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Subtotal</span>
-                  <span>₦{cartSubtotal.toLocaleString()}</span>
+                  <span>{fmt(cartSubtotal)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginBottom: '12px' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Delivery</span>
-                  <span>₦{deliveryFee.toLocaleString()}</span>
+                  <span>{fmt(deliveryFee)}</span>
                 </div>
-                {method === 'installment' && (
+                {installmentCommission > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '12px', color: 'var(--warning)', fontWeight: 600 }}>
-                    <span>Installment Fee (4%)</span>
-                    <span>+₦{installmentCommission.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                    <span>Service Fee ({method === 'installment_2' ? '4%' : '8%'})</span>
+                    <span>+{fmt(installmentCommission)}</span>
                   </div>
                 )}
                 
@@ -198,12 +218,23 @@ export default function PaymentPage() {
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '1.1rem', marginBottom: '8px' }}>
                   <span>Total</span>
-                  <span>₦{finalTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                  <span>{fmt(finalTotal)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '1.1rem', color: 'var(--primary)', marginBottom: '24px' }}>
                   <span>Due Today</span>
-                  <span>₦{amountToPay.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                  <span>{fmt(amountToPay)}</span>
                 </div>
+
+                {/* If 4-part plan, show the breakdown */}
+                {method === 'installment_4' && (
+                  <div style={{ background: 'rgba(37,99,235,0.05)', padding: '12px', borderRadius: '8px', marginBottom: '24px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    <strong style={{ display: 'block', marginBottom: '8px', color: 'var(--text)' }}>Payment Schedule:</strong>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span>Today (50%)</span><strong>{fmt(amountToPay)}</strong></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span>Week 2 (25%)</span><strong>{fmt(finalTotal * 0.25)}</strong></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span>Week 4 (15%)</span><strong>{fmt(finalTotal * 0.15)}</strong></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Week 8 (10%)</span><strong>{fmt(finalTotal * 0.10)}</strong></div>
+                  </div>
+                )}
 
                 <button className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '16px' }} onClick={() => setStep(2)}>
                   Continue to Payment <i className="fas fa-arrow-right"></i>
@@ -223,25 +254,12 @@ export default function PaymentPage() {
                   
                   <div style={{ marginBottom: '16px' }}>
                     <label style={{ display: 'block', fontWeight: 600, marginBottom: '6px', fontSize: '0.9rem' }}>Delivery Landmark <span style={{ color: 'var(--danger)' }}>*</span></label>
-                    <input 
-                      type="text" 
-                      placeholder="e.g. Opposite Shoprite, Maiduguri" 
-                      value={landmark}
-                      onChange={(e) => setLandmark(e.target.value)}
-                      required 
-                      style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', outline: 'none' }} 
-                    />
+                    <input type="text" placeholder="e.g. Opposite Shoprite, Maiduguri" value={landmark} onChange={(e) => setLandmark(e.target.value)} required style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', outline: 'none' }} />
                   </div>
 
                   <div>
                     <label style={{ display: 'block', fontWeight: 600, marginBottom: '6px', fontSize: '0.9rem' }}>Alternative Phone (Optional)</label>
-                    <input 
-                      type="tel" 
-                      placeholder="+234 800 000 0000" 
-                      value={altPhone}
-                      onChange={(e) => setAltPhone(e.target.value)}
-                      style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', outline: 'none' }} 
-                    />
+                    <input type="tel" placeholder="+234 800 000 0000" value={altPhone} onChange={(e) => setAltPhone(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', outline: 'none' }} />
                   </div>
                 </div>
 
@@ -249,7 +267,7 @@ export default function PaymentPage() {
                 <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '24px', marginBottom: '24px' }}>
                   <h3 style={{ fontWeight: '700', marginBottom: '16px' }}>2. Bank Transfer</h3>
                   <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', fontSize: '0.9rem' }}>
-                    Please transfer <strong>₦{amountToPay.toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong> to the account below.
+                    Please transfer <strong>{fmt(amountToPay)}</strong> to the account below.
                   </p>
                   
                   <div style={{ background: 'var(--bg)', borderRadius: '12px', padding: '20px', border: '1px solid var(--border)' }}>
@@ -293,26 +311,21 @@ export default function PaymentPage() {
                     </div>
                   )}
 
+                  {/* Note Field */}
+                  <div style={{ marginTop: '24px', marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px', fontSize: '0.9rem' }}>Add a Note (Optional)</label>
+                    <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g., Please deliver to the security post at the gate." rows="3" style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: '0.9rem', resize: 'vertical' }} />
+                  </div>
+
                   {/* Terms Checkbox */}
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '16px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '12px', marginTop: '24px' }}>
-                    <input 
-                      type="checkbox" 
-                      id="agreeTerms"
-                      checked={agreedToTerms}
-                      onChange={(e) => setAgreedToTerms(e.target.checked)}
-                      style={{ width: '18px', height: '18px', marginTop: '2px', cursor: 'pointer', accentColor: 'var(--primary)', flexShrink: 0 }}
-                    />
+                    <input type="checkbox" id="agreeTerms" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} style={{ width: '18px', height: '18px', marginTop: '2px', cursor: 'pointer', accentColor: 'var(--primary)', flexShrink: 0 }} />
                     <label htmlFor="agreeTerms" style={{ fontSize: '0.85rem', cursor: 'pointer', lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-                      I agree to the <a href="/policies#terms" target="_blank" style={{ color: 'var(--primary)', fontWeight: 600 }}>Terms</a>, <a href="/policies#refund" target="_blank" style={{ color: 'var(--primary)', fontWeight: 600 }}>Refund Policy</a>, and <a href="/policies#installments" target="_blank" style={{ color: 'var(--primary)', fontWeight: 600 }}>Installment Terms</a> (incl. the 4% commission and 3-week deadline).
+                      I agree to the <a href="/policies#terms" target="_blank" style={{ color: 'var(--primary)', fontWeight: 600 }}>Terms</a>, <a href="/policies#refund" target="_blank" style={{ color: 'var(--primary)', fontWeight: 600 }}>Refund Policy</a>, and <a href="/policies#installments" target="_blank" style={{ color: 'var(--primary)', fontWeight: 600 }}>Installment Terms</a> (incl. the service fee and payment deadline).
                     </label>
                   </div>
 
-                  <button 
-                    className="btn-primary" 
-                    style={{ width: '100%', marginTop: '16px', padding: '16px', justifyContent: 'center', opacity: (loading || !receipt || !agreedToTerms) ? 0.6 : 1 }} 
-                    onClick={handleSubmitOrder} 
-                    disabled={loading || !receipt || !agreedToTerms}
-                  >
+                  <button className="btn-primary" style={{ width: '100%', marginTop: '16px', padding: '16px', justifyContent: 'center', opacity: (loading || !receipt || !agreedToTerms) ? 0.6 : 1 }} onClick={handleSubmitOrder} disabled={loading || !receipt || !agreedToTerms}>
                     {loading ? <><i className="fas fa-spinner fa-spin"></i> Submitting...</> : <><i className="fas fa-check"></i> Complete Order</>}
                   </button>
                 </div>
@@ -323,15 +336,15 @@ export default function PaymentPage() {
                 <h3 style={{ fontWeight: '700', marginBottom: '20px' }}>Summary</h3>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '1.05rem', marginBottom: '12px' }}>
                   <span>Total</span>
-                  <span>₦{finalTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                  <span>{fmt(finalTotal)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--primary)', fontWeight: 700, marginBottom: '24px', fontSize: '1.05rem' }}>
                   <span>Paying Now</span>
-                  <span>₦{amountToPay.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                  <span>{fmt(amountToPay)}</span>
                 </div>
-                {method === 'installment' && (
+                {method !== 'instant' && (
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '24px', background: 'rgba(245,158,11,0.1)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(245,158,11,0.2)' }}>
-                    <strong>Note:</strong> You will pay ₦{remainingBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} later to complete this order.
+                    <strong>Note:</strong> You will pay {fmt(remainingBalance)} later to complete this order.
                   </div>
                 )}
                 <button onClick={() => setStep(1)} style={{ width: '100%', padding: '14px', background: 'transparent', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
@@ -361,15 +374,12 @@ export default function PaymentPage() {
       </main>
       <Footer />
 
-      {/* Mobile Responsiveness CSS */}
       <style jsx global>{`
         @media (max-width: 768px) {
-          /* Stack the two columns */
           .payment-grid {
             grid-template-columns: 1fr !important;
             gap: 20px !important;
           }
-          /* Make summaries non-sticky on mobile */
           .summary-box {
             position: static !important;
           }
