@@ -1,42 +1,34 @@
-// app/api/orders/route.js
+// app/api/orders/[id]/route.js
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongoose';
 import Order from '@/models/Order';
 import User from '@/models/User';
 import { verifyToken } from '@/lib/jwt';
-import { sendOrderConfirmationEmail } from '@/lib/sendEmail';
+import { sendReceiptEmail } from '@/lib/sendEmail';
 
-// GET: Fetch orders (User sees own, Admin sees all)
-export async function GET(req) {
+// GET single order
+export async function GET(req, { params }) {
   try {
     await connectToDatabase();
-    const authHeader = req.headers.get('authorization');
-    const token = authHeader?.split(' ')[1];
+    const { id } = await params;
 
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    const decoded = verifyToken(token);
-    if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    const order = await Order.findById(id).populate('user', 'name email phone address');
+    if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
 
-    const user = await User.findById(decoded.id);
-    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
-
-    let orders;
-    if (user.role === 'admin') {
-      orders = await Order.find().sort({ createdAt: -1 }).populate('user', 'name email phone address');
-    } else {
-      orders = await Order.find({ user: decoded.id }).sort({ createdAt: -1 });
-    }
-
-    return NextResponse.json({ orders });
+    return NextResponse.json(order);
   } catch (error) {
+    console.error('GET Order Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-// POST: Create a new order
-export async function POST(req) {
+// PUT: update order (status, etc.)
+export async function PUT(req, { params }) {
   try {
     await connectToDatabase();
+    const { id } = await params;
+
+    // 1. Authenticate Admin
     const authHeader = req.headers.get('authorization');
     const token = authHeader?.split(' ')[1];
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -44,60 +36,40 @@ export async function POST(req) {
     const decoded = verifyToken(token);
     if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
-    const body = await req.json();
-    const { items, totalAmount, amountPaid, paymentMethod, weeks, receiptDataUrl, bankDetails, landmark, altPhone, note } = body;
-
-    if (!items || items.length === 0) {
-      return NextResponse.json({ error: 'No items in order' }, { status: 400 });
+    const user = await User.findById(decoded.id);
+    if (!user || user.role !== 'admin') {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    // 1. Save Order
-    const order = new Order({
-      user: decoded.id,
-      items: items.map((i) => ({
-        product: i.productId,
-        title: i.title,
-        price: i.price,
-        qty: i.qty,
-        image: i.image,
-        size: i.size || '',
-        color: i.color || '',
-      })),
-      totalAmount,
-      amountPaid,
-      paymentMethod: paymentMethod === 'installment' ? 'installment' : 'bank',
-      paymentStatus: 'pending_review',
-      receiptImage: receiptDataUrl,
-      bankDetails,
-      installmentWeeks: weeks || 1,
-      landmark: landmark || '',
-      altPhone: altPhone || '',
-      note: note || '',
-    });
+    const body = await req.json();
+
+    // 2. Find Order
+    const order = await Order.findById(id).populate('user', 'email name');
+    if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+
+    // 3. Update Fields (Only if provided)
+    if (body.paymentStatus !== undefined) {
+      const isBecomingPaid = body.paymentStatus === 'paid' && order.paymentStatus !== 'paid';
+      order.paymentStatus = body.paymentStatus;
+
+      // Auto-send receipt if status just changed to 'paid'
+      if (isBecomingPaid && order.user?.email) {
+        try {
+          await sendReceiptEmail({ to: order.user.email, order });
+        } catch (err) {
+          console.error('Auto-receipt failed:', err.message);
+        }
+      }
+    }
+    
+    if (body.amountPaid !== undefined) order.amountPaid = body.amountPaid;
+    if (body.receiptImage !== undefined) order.receiptImage = body.receiptImage;
 
     await order.save();
 
-    // 2. Send Email (Isolated so it never crashes the order)
-    try {
-      const user = await User.findById(decoded.id);
-      if (user?.email) {
-        await sendOrderConfirmationEmail({
-          to: user.email,
-          customerName: user.name,
-          orderId: order._id.toString(),
-          totalAmount,
-          amountPaid,
-          paymentMethod,
-          items,
-        });
-      }
-    } catch (emailErr) {
-      console.error('Order saved, but email failed:', emailErr.message);
-    }
-
-    return NextResponse.json({ order }, { status: 201 });
+    return NextResponse.json(order);
   } catch (error) {
-    console.error('Order POST Error:', error);
-    return NextResponse.json({ error: error.message || 'Failed to create order' }, { status: 500 });
+    console.error('PUT Order Error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

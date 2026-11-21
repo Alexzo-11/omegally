@@ -33,14 +33,7 @@ export default function ForgotPasswordPage() {
         <div style={{ padding: '16px', background: 'rgba(16,185,129,0.1)', color: 'var(--success)', borderRadius: '8px', textAlign: 'center', fontSize: '0.9rem' }}>{message}</div>
       ) : (
         <form onSubmit={handleSubmit}>
-          <input 
-            type="email" 
-            placeholder="you@example.com" 
-            value={email} 
-            onChange={(e) => setEmail(e.target.value)} 
-            required 
-            style={{ width: '100%', padding: '12px', marginBottom: '16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)' }} 
-          />
+          <input type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ width: '100%', padding: '12px', marginBottom: '16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)' }} />
           <button type="submit" className="btn-primary" disabled={loading} style={{ width: '100%', padding: '14px', justifyContent: 'center' }}>
             {loading ? 'Sending...' : 'Send Reset Link'}
           </button>

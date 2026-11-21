@@ -46,16 +46,16 @@ export default function ReceiptPage() {
     }
   };
 
-  if (!order) {
-    return (
-      <div style={{ background: 'var(--bg)', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-          <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', color: 'var(--primary)', marginBottom: '16px' }}></i>
-          <p>Loading Receipt...</p>
-        </div>
+  if (!order || !order._id) {
+  return (
+    <div style={{ background: 'var(--bg)', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+        <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', color: 'var(--primary)', marginBottom: '16px' }}></i>
+        <p>Loading Receipt...</p>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   const subtotal = order.items.reduce((sum, item) => sum + (item.price * (item.qty || item.quantity)), 0);
   const deliveryFee = order.deliveryFee || 0;

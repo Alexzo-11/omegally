@@ -13,7 +13,7 @@ export default function AdminProductsPage() {
   const loadProducts = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/products?page=1&limit=100');
+      const res = await fetch('/api/products?page=1&limit=1000');
       if (!res.ok) throw new Error('Failed to load products');
       const data = await res.json();
       setProducts(data.products || []);

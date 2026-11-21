@@ -185,19 +185,19 @@ export default function ProductDetailPage() {
   )}
 </div>
 
-{/* Size & Color Badges */}
-{(product.size || product.color) && (
+{/* Size & Color Badges (Fixed for Arrays) */}
+{((product.sizes && product.sizes.length > 0) || (product.colors && product.colors.length > 0)) && (
   <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
-    {product.size && (
+    {product.sizes && product.sizes.length > 0 && (
       <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', padding: '8px 16px', borderRadius: '8px' }}>
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '2px' }}>Size</span>
-        <strong style={{ fontSize: '0.95rem' }}>{product.size}</strong>
+        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '2px' }}>Available Sizes</span>
+        <strong style={{ fontSize: '0.95rem' }}>{product.sizes.join(', ')}</strong>
       </div>
     )}
-    {product.color && (
+    {product.colors && product.colors.length > 0 && (
       <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', padding: '8px 16px', borderRadius: '8px' }}>
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '2px' }}>Color</span>
-        <strong style={{ fontSize: '0.95rem' }}>{product.color}</strong>
+        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '2px' }}>Available Colors</span>
+        <strong style={{ fontSize: '0.95rem' }}>{product.colors.join(', ')}</strong>
       </div>
     )}
   </div>
@@ -288,11 +288,22 @@ export default function ProductDetailPage() {
       <Footer />
 
       <style jsx global>{`
-        @media (max-width: 900px) {
-          .product-detail-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
-          .product-detail-grid > div[style*="position: sticky"] { position: static !important; }
-        }
-      `}</style>
+  @media (max-width: 900px) {
+    .product-detail-grid { 
+      grid-template-columns: 1fr !important; 
+      gap: 24px !important; 
+    }
+    .product-detail-grid > div[style*="position: sticky"] { 
+      position: static !important; 
+    }
+  }
+  @media (max-width: 768px) {
+    h1 { font-size: 1.8rem !important; }
+    .product-detail-grid img { max-height: 350px !important; }
+    .product-detail-grid video { max-height: 350px !important; }
+    .product-detail-grid div[style*="font-size: 2.2rem"] { font-size: 1.8rem !important; }
+  }
+`}</style>
     </>
   );
 }
