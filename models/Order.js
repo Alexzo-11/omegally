@@ -14,7 +14,11 @@ const OrderSchema = new mongoose.Schema({
   totalAmount: { type: Number, required: true },
   amountPaid: { type: Number, required: true },
   paymentMethod: { type: String, enum: ['bank', 'installment', 'instant'], default: 'bank' },
-  paymentStatus: { type: String, default: 'pending_review' },
+  paymentStatus: { 
+  type: String, 
+  enum: ['pending_review', 'pending_balance_review', 'paid', 'delivered', 'failed', 'cancelled'], 
+  default: 'pending_review' 
+},
   receiptImage: { type: String },
   bankDetails: {
     bankName: String,

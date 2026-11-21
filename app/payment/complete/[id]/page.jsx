@@ -50,31 +50,32 @@ export default function CompleteInstallmentPage() {
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!receipt) return alert('Please upload your receipt');
-    setSubmitting(true);
+  // app/payment/complete/[id]/page.jsx (inside handleSubmit)
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  if (!receipt) return alert('Please upload your receipt');
+  setSubmitting(true);
+  
+  try {
+    const token = localStorage.getItem('token');
+    await fetch(`/api/orders/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ 
+        paymentStatus: 'pending_balance_review', // <-- NEW STATUS FLAG
+        amountPaid: order.totalAmount, // User claims to have paid full
+        receiptImage: receiptPreview 
+      }),
+    });
     
-    try {
-      const token = localStorage.getItem('token');
-      await fetch(`/api/orders/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ 
-          paymentStatus: 'pending_review', 
-          amountPaid: order.totalAmount,
-          receiptImage: receiptPreview 
-        }),
-      });
-      
-      alert('Payment submitted! We will verify it shortly.');
-      router.push('/dashboard');
-    } catch (err) {
-      alert('Error submitting payment');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+    alert('Balance payment submitted! We will verify it shortly.');
+    router.push('/dashboard');
+  } catch (err) {
+    alert('Error submitting payment');
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   if (loading) {
     return (
