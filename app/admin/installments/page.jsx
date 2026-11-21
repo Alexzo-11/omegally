@@ -14,7 +14,7 @@ export default function AdminInstallmentsPage() {
       const res = await fetch('/api/orders', { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       
-      // Filter only unpaid installments OR balance pending review
+      // Fetch ALL unpaid installments (including pending_balance_review)
       const active = (data.orders || []).filter(
         o => o.paymentMethod === 'installment' && o.paymentStatus !== 'paid'
       );
@@ -40,11 +40,9 @@ export default function AdminInstallmentsPage() {
     window.open(`https://wa.me/${clean}?text=${msg}`, '_blank');
   };
 
-  // When Admin confirms the balance is paid
   const confirmBalancePaid = async (id) => {
     try {
       const token = localStorage.getItem('token');
-      // This PUT request will also trigger the Resend email to the customer
       await fetch(`/api/orders/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -52,13 +50,12 @@ export default function AdminInstallmentsPage() {
       });
       loadInstallments();
       setSelected(null);
-      alert('Balance confirmed! Final receipt has been emailed to the customer.');
+      alert('Balance confirmed! Final receipt sent to the customer via email.');
     } catch (err) {
       alert('Failed to update status: ' + err.message);
     }
   };
 
-  // Send final receipt via WhatsApp
   const sendReceiptWhatsApp = (phone, orderId) => {
     if (!phone) return alert('No phone number on file');
     let clean = phone.replace(/\D/g, '');
@@ -73,17 +70,13 @@ export default function AdminInstallmentsPage() {
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 24px' }}>
       
-      {/* Header */}
       <div style={{ marginBottom: '32px' }}>
         <h1 style={{ fontSize: '2rem', fontWeight: 800 }}>Installment Tracker</h1>
         <p style={{ color: 'var(--text-secondary)' }}>Monitor outstanding balances, send reminders, and confirm final payments.</p>
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-secondary)' }}>
-          <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', color: 'var(--primary)', marginBottom: '16px' }}></i>
-          <p>Loading installments...</p>
-        </div>
+        <div style={{ textAlign: 'center', padding: '60px' }}>Loading...</div>
       ) : installments.length === 0 ? (
         <div style={{ background: 'var(--bg-elevated)', padding: '40px', borderRadius: '16px', textAlign: 'center', border: '1px dashed var(--border)' }}>
           <i className="fas fa-check-circle" style={{ fontSize: '2.5rem', color: 'var(--success)', marginBottom: '16px' }}></i>
@@ -152,12 +145,9 @@ export default function AdminInstallmentsPage() {
         </div>
       )}
 
-      {/* MODAL: View Receipt & Confirm Balance */}
+      {/* MODAL */}
       {selected && (
-        <div 
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', zIndex: 1000 }} 
-          onClick={(e) => e.target === e.currentTarget && setSelected(null)}
-        >
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', zIndex: 1000 }} onClick={(e) => e.target === e.currentTarget && setSelected(null)}>
           <div style={{ background: 'var(--bg-elevated)', borderRadius: '16px', maxWidth: '500px', width: '100%', padding: '24px', border: '1px solid var(--border)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h3 style={{ fontWeight: 800, margin: 0 }}>Confirm Balance Payment</h3>
@@ -176,23 +166,16 @@ export default function AdminInstallmentsPage() {
               <div style={{ marginBottom: '20px' }}>
                 <p style={{ fontWeight: 600, marginBottom: '8px', fontSize: '0.9rem' }}>Uploaded Receipt:</p>
                 <a href={selected.receiptImage} target="_blank" rel="noreferrer">
-                  <img src={selected.receiptImage} alt="Receipt" style={{ width: '100%', maxHeight: '250px', objectFit: 'contain', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'zoom-in' }} />
+                  <img src={selected.receiptImage} alt="Receipt" style={{ width: '100%', maxHeight: '250px', objectFit: 'contain', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)' }} />
                 </a>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'center', marginTop: '4px' }}>Click image to open full size</p>
               </div>
             )}
 
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <button 
-                onClick={() => confirmBalancePaid(selected._id)} 
-                style={{ flex: '1 1 140px', background: 'var(--success)', color: '#fff', border: 'none', padding: '14px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-              >
+              <button onClick={() => confirmBalancePaid(selected._id)} style={{ flex: '1 1 140px', background: 'var(--success)', color: '#fff', border: 'none', padding: '14px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                 <i className="fas fa-check-circle"></i> Confirm Paid
               </button>
-              <button 
-                onClick={() => sendReceiptWhatsApp(selected.user?.phone, selected._id)} 
-                style={{ flex: '1 1 140px', background: '#25D366', color: '#fff', border: 'none', padding: '14px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-              >
+              <button onClick={() => sendReceiptWhatsApp(selected.user?.phone, selected._id)} style={{ flex: '1 1 140px', background: '#25D366', color: '#fff', border: 'none', padding: '14px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                 <i className="fab fa-whatsapp"></i> Send Receipt
               </button>
             </div>

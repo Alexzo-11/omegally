@@ -208,17 +208,26 @@ export default function DashboardPage() {
                             )}
                           </div>
 
-                          {order.paymentMethod === 'installment' && order.paymentStatus !== 'paid' && (
-                            <div style={{ background: 'rgba(245,158,11,0.08)', padding: '16px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(245,158,11,0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                              <div style={{ fontSize: '0.9rem' }}>
-                                <strong style={{ color: 'var(--warning)', display: 'block', marginBottom: '4px' }}>⚠️ Pending Balance</strong>
-                                <span style={{ color: 'var(--text-secondary)' }}>Remaining: <strong style={{ color: 'var(--text)' }}>₦{(order.totalAmount - order.amountPaid).toLocaleString()}</strong></span>
-                              </div>
-                              <Link href={`/payment/complete/${order._id}`} className="btn-primary" style={{ padding: '10px 20px', fontSize: '0.85rem', borderRadius: '100px', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                                Pay Balance <i className="fas fa-arrow-right"></i>
-                              </Link>
-                            </div>
-                          )}
+                          {/* Only show Pay Balance if it's not already pending review */}
+{order.paymentMethod === 'installment' && order.paymentStatus !== 'paid' && order.paymentStatus !== 'pending_balance_review' && (
+  <div style={{ background: 'rgba(245,158,11,0.08)', padding: '16px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(245,158,11,0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+    <div style={{ fontSize: '0.9rem' }}>
+      <strong style={{ color: 'var(--warning)', display: 'block', marginBottom: '4px' }}>⚠️ Pending Balance</strong>
+      <span style={{ color: 'var(--text-secondary)' }}>Remaining: <strong style={{ color: 'var(--text)' }}>₦{(order.totalAmount - order.amountPaid).toLocaleString()}</strong></span>
+    </div>
+    <Link href={`/payment/complete/${order._id}`} className="btn-primary" style={{ padding: '10px 20px', fontSize: '0.85rem', borderRadius: '100px', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+      Pay Balance <i className="fas fa-arrow-right"></i>
+    </Link>
+  </div>
+)}
+
+{/* Show a different message if they are waiting for approval */}
+{order.paymentMethod === 'installment' && order.paymentStatus === 'pending_balance_review' && (
+  <div style={{ background: 'rgba(37,99,235,0.08)', padding: '16px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(37,99,235,0.3)', fontSize: '0.9rem' }}>
+    <strong style={{ color: 'var(--primary)' }}>ℹ️ Balance Payment Submitted</strong>
+    <p style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>We are reviewing your balance receipt. You will be notified once confirmed.</p>
+  </div>
+)}
 
                         </div>
                       ))}

@@ -50,7 +50,8 @@ export default function CompleteInstallmentPage() {
     reader.readAsDataURL(file);
   };
 
-  // app/payment/complete/[id]/page.jsx (inside handleSubmit)
+// app/payment/complete/[id]/page.jsx
+
 const handleSubmit = async (e) => {
   e.preventDefault();
   if (!receipt) return alert('Please upload your receipt');
@@ -58,20 +59,22 @@ const handleSubmit = async (e) => {
   
   try {
     const token = localStorage.getItem('token');
-    await fetch(`/api/orders/${id}`, {
+    const res = await fetch(`/api/orders/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ 
-        paymentStatus: 'pending_balance_review', // <-- NEW STATUS FLAG
-        amountPaid: order.totalAmount, // User claims to have paid full
+        paymentStatus: 'pending_balance_review', // <--- THIS IS CRITICAL
+        amountPaid: order.totalAmount, // Updates the total paid to the full amount
         receiptImage: receiptPreview 
       }),
     });
+
+    if (!res.ok) throw new Error('Failed to submit payment');
     
     alert('Balance payment submitted! We will verify it shortly.');
     router.push('/dashboard');
   } catch (err) {
-    alert('Error submitting payment');
+    alert('Error submitting payment: ' + err.message);
   } finally {
     setSubmitting(false);
   }
