@@ -9,27 +9,17 @@ export default function AdminOrdersPage() {
   const [selected, setSelected] = useState(null);
   const [sendingEmail, setSendingEmail] = useState(false);
 
- // inside app/admin/orders/page.jsx
   const loadOrders = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      if (!token) {
-        alert('You are not logged in. Please log out and log back in.');
-        return;
-      }
-
       const res = await fetch('/api/orders', { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to fetch orders');
+      if (res.ok) {
+        const data = await res.json();
+        setOrders(data.orders || data || []);
       }
-
-      setOrders(data.orders || []);
     } catch (e) {
       console.error(e);
-      alert(`Error loading orders: ${e.message}`); // This will tell you exactly what's wrong
     } finally {
       setLoading(false);
     }
@@ -39,7 +29,7 @@ export default function AdminOrdersPage() {
 
   const exportToCSV = () => {
     if (orders.length === 0) return alert('No orders to export');
-    const headers = ['Order ID', 'Date', 'Customer', 'Phone', 'Total (₦)', 'Paid (₦)', 'Status', 'Payment Method'];
+    const headers = ['Order ID', 'Date', 'Customer', 'Phone', 'Total (₦)', 'Paid (₦)', 'Status', 'Payment Method', 'Paystack Ref'];
     const rows = orders.map(o => [
       `#${o._id.slice(-6).toUpperCase()}`,
       new Date(o.createdAt).toLocaleDateString(),
@@ -48,7 +38,8 @@ export default function AdminOrdersPage() {
       o.totalAmount,
       o.amountPaid || 0,
       o.paymentStatus,
-      o.paymentMethod
+      o.paymentMethod,
+      o.paystackReference || 'N/A'
     ]);
     const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -80,7 +71,7 @@ export default function AdminOrdersPage() {
   const notifyCustomer = (phone, orderId) => {
     let targetPhone = phone;
     if (!targetPhone) {
-      targetPhone = prompt("No phone number on file. Enter customer's WhatsApp number (e.g., 2348012345678):");
+      targetPhone = prompt("No phone number on file. Enter customer's WhatsApp number:");
       if (!targetPhone) return;
     }
     const cleanPhone = formatPhoneForWhatsApp(targetPhone);
@@ -100,7 +91,6 @@ export default function AdminOrdersPage() {
     window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
   };
 
-  // ✅ NEW: Handle Send Email
   const handleSendEmail = async (orderId) => {
     setSendingEmail(true);
     try {
@@ -109,10 +99,8 @@ export default function AdminOrdersPage() {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
-      
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to send email');
-      
       alert('✅ Receipt email sent successfully to the customer!');
     } catch (err) {
       alert(`❌ ${err.message}`);
@@ -179,11 +167,7 @@ export default function AdminOrdersPage() {
                 }}
               >
                 {opt.label}
-                <span style={{ 
-                  background: isActive ? 'rgba(255,255,255,0.25)' : 'var(--border)', 
-                  color: isActive ? '#fff' : 'var(--text-secondary)', 
-                  padding: '1px 8px', borderRadius: '100px', fontSize: '0.75rem', fontWeight: 700 
-                }}>
+                <span style={{ background: isActive ? 'rgba(255,255,255,0.25)' : 'var(--border)', color: isActive ? '#fff' : 'var(--text-secondary)', padding: '1px 8px', borderRadius: '100px', fontSize: '0.75rem', fontWeight: 700 }}>
                   {count}
                 </span>
               </button>
@@ -249,35 +233,26 @@ export default function AdminOrdersPage() {
                 {/* Customer Info */}
                 <div style={{ background: 'var(--bg)', padding: '20px', borderRadius: 'var(--radius-sm)', marginBottom: '24px', border: '1px solid var(--border)' }}>
                   <h4 style={{ fontWeight: 700, marginBottom: '12px', fontSize: '0.85rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Customer Info</h4>
-                  
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.9rem' }}>
                     <div><strong>Name:</strong> {selected.user?.name || 'Guest'}</div>
                     <div><strong>Phone:</strong> {selected.user?.phone || 'N/A'}</div>
                     {selected.altPhone && <div><strong>Alt Phone:</strong> {selected.altPhone}</div>}
                     {selected.landmark && <div><strong>Landmark:</strong> {selected.landmark}</div>}
                     {selected.user?.address && <div><strong>Address:</strong> {selected.user.address}</div>}
+                    {selected.note && (
+                      <div style={{ marginTop: '8px', padding: '10px', background: 'rgba(37,99,235,0.05)', borderRadius: '6px', borderLeft: '3px solid var(--primary)' }}>
+                        <strong>Note:</strong> {selected.note}
+                      </div>
+                    )}
                   </div>
-                  {selected.note && (
-  <div style={{ marginTop: '16px', background: 'rgba(37,99,235,0.05)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(37,99,235,0.2)' }}>
-    <strong style={{ fontSize: '0.85rem', color: 'var(--primary)', display: 'block', marginBottom: '4px' }}>
-      <i className="fas fa-sticky-note"></i> Customer Note
-    </strong>
-    <p style={{ fontSize: '0.9rem', margin: 0 }}>{selected.note}</p>
-  </div>
-)}
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-                    <button 
-                      onClick={() => notifyCustomer(selected.user?.phone, selected._id)} 
-                      style={{ flex: 1, background: '#25D366', color: '#fff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '0.85rem' }}
-                    >
-                      <i className="fab fa-whatsapp"></i> Notify
-                    </button>
-                    <button 
-                      onClick={() => sendReceiptWhatsApp(selected.user?.phone, selected._id)} 
-                      style={{ flex: 1, background: '#25D366', color: '#fff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '0.85rem' }}
-                    >
-                      <i className="fas fa-receipt"></i> WhatsApp Receipt
-                    </button>
+                </div>
+
+                {/* Paystack Reference */}
+                <div style={{ background: 'rgba(0,195,247,0.05)', border: '1px solid rgba(0,195,247,0.2)', padding: '16px', borderRadius: 'var(--radius-sm)', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <i className="fas fa-shield-alt" style={{ color: '#00C3F7', fontSize: '1.2rem' }}></i>
+                  <div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>Paystack Reference</div>
+                    <div style={{ fontWeight: 600, fontSize: '0.9rem', wordBreak: 'break-all' }}>{selected.paystackReference || 'Manual Payment (No Reference)'}</div>
                   </div>
                 </div>
 
@@ -320,17 +295,6 @@ export default function AdminOrdersPage() {
                   )}
                 </div>
 
-                {/* Receipt */}
-                {selected.receiptImage && (
-                  <div style={{ marginBottom: '24px' }}>
-                    <h4 style={{ fontWeight: 700, marginBottom: '12px', fontSize: '0.85rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Payment Receipt</h4>
-                    <a href={selected.receiptImage} target="_blank" rel="noreferrer">
-                      <img src={selected.receiptImage} alt="Receipt" style={{ width: '100%', maxHeight: '280px', objectFit: 'contain', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', cursor: 'zoom-in', background: 'var(--bg)' }} />
-                    </a>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'center', marginTop: '8px' }}>Click image to open full size</p>
-                  </div>
-                )}
-
                 {/* Action Buttons */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
                   <button onClick={() => updateStatus(selected._id, 'paid')} style={{ flex: '1 1 140px', padding: '14px', background: 'var(--success)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
@@ -344,7 +308,6 @@ export default function AdminOrdersPage() {
                   </button>
                 </div>
 
-                {/* Email Action (Full Width) */}
                 <button 
                   onClick={() => handleSendEmail(selected._id)} 
                   disabled={sendingEmail}

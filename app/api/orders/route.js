@@ -79,6 +79,8 @@ export async function POST(req) {
       totalAmount,
       amountPaid,
       paymentMethod: paymentMethod === 'installment' ? 'installment' : 'bank',
+      paystackReference: body.paystackReference || null,
+      paymentStatus: body.paystackReference ? 'pending_review' : 'pending_review',
       paymentStatus: 'pending_review',
       receiptImage: receiptDataUrl,
       bankDetails,

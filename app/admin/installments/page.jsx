@@ -6,6 +6,7 @@ export default function AdminInstallmentsPage() {
   const [installments, setInstallments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
+  const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'waiting' | 'completed'
 
   const loadInstallments = async () => {
     setLoading(true);
@@ -14,10 +15,14 @@ export default function AdminInstallmentsPage() {
       const res = await fetch('/api/orders', { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       
-      // Fetch ALL unpaid installments (including pending_balance_review)
-      const active = (data.orders || []).filter(
-        o => o.paymentMethod === 'installment' && o.paymentStatus !== 'paid'
-      );
+      // Filter logic based on the button clicked
+      const active = (data.orders || []).filter(o => {
+        if (o.paymentMethod !== 'installment') return false;
+        if (filterStatus === 'completed') return o.paymentStatus === 'paid';
+        if (filterStatus === 'waiting') return o.paymentStatus !== 'paid';
+        return true; // 'all'
+      });
+      
       setInstallments(active);
     } catch (err) {
       console.error(err);
@@ -26,9 +31,10 @@ export default function AdminInstallmentsPage() {
     }
   };
 
+  // Re-run the fetch whenever the filter changes
   useEffect(() => {
     loadInstallments();
-  }, []);
+  }, [filterStatus]);
 
   const sendReminder = (phone, name, balance) => {
     if (!phone) return alert('No phone number on file');
@@ -70,9 +76,31 @@ export default function AdminInstallmentsPage() {
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 24px' }}>
       
-      <div style={{ marginBottom: '32px' }}>
+      <div style={{ marginBottom: '24px' }}>
         <h1 style={{ fontSize: '2rem', fontWeight: 800 }}>Installment Tracker</h1>
         <p style={{ color: 'var(--text-secondary)' }}>Monitor outstanding balances, send reminders, and confirm final payments.</p>
+      </div>
+
+      {/* Filter Buttons */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
+        <button 
+          onClick={() => setFilterStatus('all')} 
+          style={{ padding: '8px 16px', borderRadius: '100px', fontWeight: 600, border: '1px solid var(--border)', background: filterStatus === 'all' ? 'var(--primary)' : 'var(--bg-elevated)', color: filterStatus === 'all' ? '#fff' : 'var(--text)', cursor: 'pointer' }}
+        >
+          All
+        </button>
+        <button 
+          onClick={() => setFilterStatus('waiting')} 
+          style={{ padding: '8px 16px', borderRadius: '100px', fontWeight: 600, border: '1px solid var(--border)', background: filterStatus === 'waiting' ? 'var(--primary)' : 'var(--bg-elevated)', color: filterStatus === 'waiting' ? '#fff' : 'var(--text)', cursor: 'pointer' }}
+        >
+          Waiting for Balance
+        </button>
+        <button 
+          onClick={() => setFilterStatus('completed')} 
+          style={{ padding: '8px 16px', borderRadius: '100px', fontWeight: 600, border: '1px solid var(--border)', background: filterStatus === 'completed' ? 'var(--primary)' : 'var(--bg-elevated)', color: filterStatus === 'completed' ? '#fff' : 'var(--text)', cursor: 'pointer' }}
+        >
+          Fully Paid
+        </button>
       </div>
 
       {loading ? (
@@ -80,8 +108,8 @@ export default function AdminInstallmentsPage() {
       ) : installments.length === 0 ? (
         <div style={{ background: 'var(--bg-elevated)', padding: '40px', borderRadius: '16px', textAlign: 'center', border: '1px dashed var(--border)' }}>
           <i className="fas fa-check-circle" style={{ fontSize: '2.5rem', color: 'var(--success)', marginBottom: '16px' }}></i>
-          <h3 style={{ fontWeight: 700 }}>All caught up!</h3>
-          <p style={{ color: 'var(--text-secondary)' }}>No pending installment balances.</p>
+          <h3 style={{ fontWeight: 700 }}>No installments found</h3>
+          <p style={{ color: 'var(--text-secondary)' }}>There are no installments matching this filter.</p>
         </div>
       ) : (
         <div style={{ display: 'grid', gap: '12px' }}>
@@ -132,12 +160,14 @@ export default function AdminInstallmentsPage() {
                       View & Confirm
                     </button>
                   )}
-                  <button 
-                    onClick={() => sendReminder(order.user?.phone, order.user?.name, balance)}
-                    style={{ background: '#25D366', color: '#fff', border: 'none', padding: '12px 20px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
-                  >
-                    <i className="fab fa-whatsapp"></i> Send Reminder
-                  </button>
+                  {order.paymentStatus !== 'paid' && (
+                    <button 
+                      onClick={() => sendReminder(order.user?.phone, order.user?.name, balance)}
+                      style={{ background: '#25D366', color: '#fff', border: 'none', padding: '12px 20px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                    >
+                      <i className="fab fa-whatsapp"></i> Send Reminder
+                    </button>
+                  )}
                 </div>
               </div>
             );
