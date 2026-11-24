@@ -1,30 +1,44 @@
-// app/api/products/route.js
+// app/api/products/route.js (POST handler)
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongoose';
 import Product from '@/models/Product';
+import { verifyToken } from '@/lib/jwt';
 
-export async function GET(req) {
+export async function POST(req) {
   try {
     await connectToDatabase();
-    const { searchParams } = new URL(req.url);
     
-    // If limit is not specified, return ALL products (no limit)
-    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')) : 0;
-    const page = parseInt(searchParams.get('page')) || 1;
-    const skip = (page - 1) * (limit || 1000);
-
-    let query = Product.find({}).sort({ createdAt: -1 }).skip(skip);
+    // Check Auth
+    const authHeader = req.headers.get('authorization');
+    const token = authHeader?.split(' ')[1];
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
-    // Only apply limit if it was explicitly passed
-    if (limit > 0) {
-      query = query.limit(limit);
-    }
+    const decoded = verifyToken(token);
+    if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
-    const products = await query.lean();
+    const body = await req.json();
 
-    return NextResponse.json({ products });
+    // Save Product
+    const product = new Product({
+      title: body.title,
+      description: body.description || '',
+      price: Number(body.price),
+      discountPrice: Number(body.discountPrice) || 0,
+      deliveryFee: Number(body.deliveryFee) || 0,
+      stock: Number(body.stock) || 0,
+      images: Array.isArray(body.images) ? body.images : [],
+      category: body.category || 'Other',
+      brand: body.brand || '',
+      sizes: Array.isArray(body.sizes) ? body.sizes : [],
+      colors: Array.isArray(body.colors) ? body.colors : [],
+      isFeatured: Boolean(body.isFeatured),
+    });
+
+    await product.save();
+
+    return NextResponse.json(product, { status: 201 });
   } catch (error) {
-    console.error('Products API Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('Product POST Error:', error); // This will print the exact error in Vercel logs
+    return NextResponse.json({ error: error.message || 'Failed to create product' }, { status: 500 });
   }
 }

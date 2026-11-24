@@ -89,6 +89,7 @@ export default function NewProductPage() {
     }
   };
 
+  // app/admin/products/new/page.jsx (inside handleSubmit)
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (images.length === 0) return setError('Please upload at least 1 image');
@@ -101,8 +102,12 @@ export default function NewProductPage() {
     }
 
     setLoading(true);
+    setError(''); // Clear previous errors
+
     try {
       const token = localStorage.getItem('token');
+      if (!token) throw new Error('You are not logged in. Please log in again.');
+
       const res = await fetch('/api/products', {
         method: 'POST',
         headers: {
@@ -116,14 +121,21 @@ export default function NewProductPage() {
           deliveryFee: form.deliveryFee ? parseFloat(form.deliveryFee) : 0,
           stock: parseInt(form.stock) || 0,
           images: images,
-          sizes: form.sizes.split(',').map(s => s.trim()).filter(Boolean),
-          colors: form.colors.split(',').map(c => c.trim()).filter(Boolean),
+          sizes: form.sizes ? form.sizes.split(',').map(s => s.trim()).filter(Boolean) : [],
+          colors: form.colors ? form.colors.split(',').map(c => c.trim()).filter(Boolean) : [],
           isFeatured: form.isFeatured,
         }),
       });
 
+      // ✅ SAFE JSON PARSING
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Server error: The server did not return valid JSON. Please try again.');
+      }
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create product');
+      
       router.push('/admin/products');
     } catch (err) {
       setError(err.message);
@@ -131,7 +143,6 @@ export default function NewProductPage() {
       setLoading(false);
     }
   };
-
   return (
     <main style={{ paddingTop: 'calc(var(--nav-height) + 40px)', paddingBottom: '80px', background: 'var(--bg)', minHeight: '100vh' }}>
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: '0 24px' }}>

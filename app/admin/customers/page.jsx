@@ -3,67 +3,92 @@
 import { useEffect, useState } from 'react';
 
 export default function AdminCustomersPage() {
-  const [users, setUsers] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchCustomers = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('/api/users', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setUsers(data.users || []);
-        }
+        const res = await fetch('/api/users', { headers: { Authorization: `Bearer ${token}` } });
+        const data = await res.json();
+        setCustomers(data.users || []);
       } catch (err) {
         console.error(err);
       } finally {
         setLoading(false);
       }
     };
-    fetchUsers();
+    fetchCustomers();
   }, []);
 
+  // ✅ NEW: Send Email to All Customers
+  const sendEmailToAll = async () => {
+    if (!confirm(`Are you sure you want to send a promotional email to all ${customers.length} customers?`)) return;
+    
+    setSending(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/users/send-broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ 
+          subject: 'Exclusive Offer from Omegally!',
+          message: 'Hello! We have new arrivals and exclusive deals just for you. Shop now at omegally.store!'
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to send emails');
+      alert(`✅ Broadcast email sent to ${data.sentCount || 'all'} customers!`);
+    } catch (err) {
+      alert(`❌ Error: ${err.message}`);
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
-    <div>
-      <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '24px' }}>Registered Customers</h1>
-      
-      {loading ? <p>Loading customers...</p> : users.length === 0 ? (
-        <p>No registered customers yet.</p>
-      ) : (
-        <div style={{ overflowX: 'auto', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
-            <thead>
-              <tr style={{ background: 'var(--border-light)', textAlign: 'left' }}>
-                <th style={{ padding: '16px', fontSize: '0.85rem', fontWeight: 600 }}>Name</th>
-                <th style={{ padding: '16px', fontSize: '0.85rem', fontWeight: 600 }}>Email</th>
-                <th style={{ padding: '16px', fontSize: '0.85rem', fontWeight: 600 }}>Phone</th>
-                <th style={{ padding: '16px', fontSize: '0.85rem', fontWeight: 600 }}>Role</th>
-                <th style={{ padding: '16px', fontSize: '0.85rem', fontWeight: 600 }}>Joined</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map(user => (
-                <tr key={user._id} style={{ borderTop: '1px solid var(--border)' }}>
-                  <td style={{ padding: '16px', fontWeight: 600 }}>{user.name}</td>
-                  <td style={{ padding: '16px', color: 'var(--text-secondary)' }}>{user.email}</td>
-                  <td style={{ padding: '16px', color: 'var(--text-secondary)' }}>{user.phone || 'N/A'}</td>
-                  <td style={{ padding: '16px' }}>
-                    <span className={`badge ${user.role === 'admin' ? 'badge-danger' : 'badge-success'}`}>
-                      {user.role}
-                    </span>
-                  </td>
-                  <td style={{ padding: '16px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                    {new Date(user.createdAt).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <main style={{ paddingTop: 'calc(var(--nav-height) + 40px)', paddingBottom: '80px', background: 'var(--bg)', minHeight: '100vh' }}>
+      <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '0 24px' }}>
+        
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
+          <div>
+            <h1 style={{ fontSize: '2rem', fontWeight: 800 }}>Customers</h1>
+            <p style={{ color: 'var(--text-secondary)' }}>View and manage all registered users.</p>
+          </div>
+          <button onClick={sendEmailToAll} disabled={sending} style={{ background: '#4F46E5', color: '#fff', border: 'none', padding: '12px 20px', borderRadius: '100px', fontWeight: 600, cursor: sending ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', opacity: sending ? 0.7 : 1 }}>
+            {sending ? <><i className="fas fa-spinner fa-spin"></i> Sending...</> : <><i className="fas fa-envelope"></i> Email All Customers</>}
+          </button>
         </div>
-      )}
-    </div>
+
+        {loading ? (
+          <p>Loading...</p>
+        ) : (
+          <div style={{ background: 'var(--bg-elevated)', borderRadius: '12px', border: '1px solid var(--border)', overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead style={{ background: 'var(--bg)' }}>
+                <tr>
+                  <th style={{ padding: '16px', textAlign: 'left', fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Name</th>
+                  <th style={{ padding: '16px', textAlign: 'left', fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Email</th>
+                  <th style={{ padding: '16px', textAlign: 'left', fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Phone</th>
+                  <th style={{ padding: '16px', textAlign: 'left', fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Joined</th>
+                </tr>
+              </thead>
+              <tbody>
+                {customers.map(c => (
+                  <tr key={c._id} style={{ borderTop: '1px solid var(--border)' }}>
+                    <td style={{ padding: '16px', fontWeight: 600 }}>{c.name}</td>
+                    <td style={{ padding: '16px', color: 'var(--text-secondary)' }}>{c.email}</td>
+                    <td style={{ padding: '16px', color: 'var(--text-secondary)' }}>{c.phone || 'N/A'}</td>
+                    <td style={{ padding: '16px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{new Date(c.createdAt).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </main>
   );
 }

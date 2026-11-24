@@ -68,26 +68,15 @@ export default function AdminOrdersPage() {
     return cleaned;
   };
 
-  const notifyCustomer = (phone, orderId) => {
+  // ✅ NEW: WhatsApp Confirmation Message
+  const sendOrderConfirmationWhatsApp = (phone, orderId) => {
     let targetPhone = phone;
     if (!targetPhone) {
       targetPhone = prompt("No phone number on file. Enter customer's WhatsApp number:");
       if (!targetPhone) return;
     }
     const cleanPhone = formatPhoneForWhatsApp(targetPhone);
-    const msg = encodeURIComponent(`Hello! Your order #${orderId.slice(-6).toUpperCase()} has been confirmed. Thank you for shopping with Omegally!`);
-    window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
-  };
-
-  const sendReceiptWhatsApp = (phone, orderId) => {
-    let targetPhone = phone;
-    if (!targetPhone) {
-      targetPhone = prompt("No phone number on file. Enter customer's WhatsApp number:");
-      if (!targetPhone) return;
-    }
-    const cleanPhone = formatPhoneForWhatsApp(targetPhone);
-    const receiptLink = `${window.location.origin}/receipt/${orderId}`;
-    const msg = encodeURIComponent(`Hello! Your payment for Order #${orderId.slice(-6).toUpperCase()} has been confirmed. \n\nHere is your receipt: ${receiptLink}\n\nThank you for shopping with Omegally!`);
+    const msg = encodeURIComponent(`Hello! We have received your order #${orderId.slice(-6).toUpperCase()} on Omegally. \n\nPlease check your email for your receipt and order details. We will process your order shortly! Thank you for shopping with us.`);
     window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
   };
 
@@ -109,9 +98,7 @@ export default function AdminOrdersPage() {
     }
   };
 
-  const filteredOrders = filter === 'all' 
-    ? orders 
-    : orders.filter(o => o.paymentStatus === filter);
+  const filteredOrders = filter === 'all' ? orders : orders.filter(o => o.paymentStatus === filter);
 
   const filterOptions = [
     { id: 'all', label: 'All Orders' },
@@ -135,7 +122,6 @@ export default function AdminOrdersPage() {
     <main style={{ paddingTop: 'calc(var(--nav-height) + 40px)', paddingBottom: '80px', background: 'var(--bg)', minHeight: '100vh' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px' }}>
         
-        {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
           <div>
             <h1 style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.02em', margin: 0 }}>Manage Orders</h1>
@@ -148,34 +134,19 @@ export default function AdminOrdersPage() {
           </button>
         </div>
 
-        {/* Filter Pills */}
         <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '16px', marginBottom: '24px' }}>
           {filterOptions.map(opt => {
             const count = opt.id === 'all' ? orders.length : orders.filter(o => o.paymentStatus === opt.id).length;
             const isActive = filter === opt.id;
             return (
-              <button 
-                key={opt.id}
-                onClick={() => setFilter(opt.id)}
-                style={{ 
-                  whiteSpace: 'nowrap', padding: '8px 16px', borderRadius: '100px', 
-                  border: isActive ? '1px solid var(--primary)' : '1px solid var(--border)',
-                  background: isActive ? 'var(--primary)' : 'var(--bg-elevated)',
-                  color: isActive ? '#fff' : 'var(--text)',
-                  fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s'
-                }}
-              >
+              <button key={opt.id} onClick={() => setFilter(opt.id)} style={{ whiteSpace: 'nowrap', padding: '8px 16px', borderRadius: '100px', border: isActive ? '1px solid var(--primary)' : '1px solid var(--border)', background: isActive ? 'var(--primary)' : 'var(--bg-elevated)', color: isActive ? '#fff' : 'var(--text)', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s' }}>
                 {opt.label}
-                <span style={{ background: isActive ? 'rgba(255,255,255,0.25)' : 'var(--border)', color: isActive ? '#fff' : 'var(--text-secondary)', padding: '1px 8px', borderRadius: '100px', fontSize: '0.75rem', fontWeight: 700 }}>
-                  {count}
-                </span>
+                <span style={{ background: isActive ? 'rgba(255,255,255,0.25)' : 'var(--border)', color: isActive ? '#fff' : 'var(--text-secondary)', padding: '1px 8px', borderRadius: '100px', fontSize: '0.75rem', fontWeight: 700 }}>{count}</span>
               </button>
             );
           })}
         </div>
 
-        {/* Orders List */}
         {loading ? (
           <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-secondary)' }}>
             <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', color: 'var(--primary)', marginBottom: '16px' }}></i>
@@ -185,7 +156,6 @@ export default function AdminOrdersPage() {
           <div style={{ background: 'var(--bg-elevated)', border: '1px dashed var(--border)', borderRadius: 'var(--radius-lg)', textAlign: 'center', padding: '60px 20px' }}>
             <i className="fas fa-inbox" style={{ fontSize: '2.5rem', color: 'var(--text-tertiary)', marginBottom: '16px' }}></i>
             <h3 style={{ fontWeight: 700, marginBottom: '8px' }}>No orders found</h3>
-            <p style={{ color: 'var(--text-secondary)' }}>There are no orders with this status.</p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -200,37 +170,25 @@ export default function AdminOrdersPage() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  <span style={getStatusStyle(order.paymentStatus)}>
-                    {order.paymentStatus.replace('_', ' ')}
-                  </span>
-                  <button onClick={() => setSelected(order)} style={{ padding: '8px 16px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '100px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>
-                    View
-                  </button>
+                  <span style={getStatusStyle(order.paymentStatus)}>{order.paymentStatus.replace('_', ' ')}</span>
+                  <button onClick={() => setSelected(order)} style={{ padding: '8px 16px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '100px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>View</button>
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* Order Details Modal */}
         {selected && (
-          <div 
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', zIndex: 1000 }} 
-            onClick={(e) => e.target === e.currentTarget && setSelected(null)}
-          >
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', zIndex: 1000 }} onClick={(e) => e.target === e.currentTarget && setSelected(null)}>
             <div style={{ background: 'var(--bg-elevated)', maxWidth: '640px', width: '100%', maxHeight: '90vh', overflowY: 'auto', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-xl)' }}>
               
-              {/* Modal Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, background: 'var(--bg-elevated)', zIndex: 10 }}>
                 <h2 style={{ fontSize: '1.3rem', fontWeight: 800, margin: 0 }}>Order #{selected._id.slice(-6).toUpperCase()}</h2>
-                <button onClick={() => setSelected(null)} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text)' }}>
-                  <i className="fas fa-times"></i>
-                </button>
+                <button onClick={() => setSelected(null)} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text)' }}><i className="fas fa-times"></i></button>
               </div>
 
               <div style={{ padding: '24px' }}>
                 
-                {/* Customer Info */}
                 <div style={{ background: 'var(--bg)', padding: '20px', borderRadius: 'var(--radius-sm)', marginBottom: '24px', border: '1px solid var(--border)' }}>
                   <h4 style={{ fontWeight: 700, marginBottom: '12px', fontSize: '0.85rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Customer Info</h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.9rem' }}>
@@ -239,15 +197,10 @@ export default function AdminOrdersPage() {
                     {selected.altPhone && <div><strong>Alt Phone:</strong> {selected.altPhone}</div>}
                     {selected.landmark && <div><strong>Landmark:</strong> {selected.landmark}</div>}
                     {selected.user?.address && <div><strong>Address:</strong> {selected.user.address}</div>}
-                    {selected.note && (
-                      <div style={{ marginTop: '8px', padding: '10px', background: 'rgba(37,99,235,0.05)', borderRadius: '6px', borderLeft: '3px solid var(--primary)' }}>
-                        <strong>Note:</strong> {selected.note}
-                      </div>
-                    )}
+                    {selected.note && <div style={{ marginTop: '8px', padding: '10px', background: 'rgba(37,99,235,0.05)', borderRadius: '6px', borderLeft: '3px solid var(--primary)' }}><strong>Note:</strong> {selected.note}</div>}
                   </div>
                 </div>
 
-                {/* Paystack Reference */}
                 <div style={{ background: 'rgba(0,195,247,0.05)', border: '1px solid rgba(0,195,247,0.2)', padding: '16px', borderRadius: 'var(--radius-sm)', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <i className="fas fa-shield-alt" style={{ color: '#00C3F7', fontSize: '1.2rem' }}></i>
                   <div>
@@ -256,7 +209,6 @@ export default function AdminOrdersPage() {
                   </div>
                 </div>
 
-                {/* Order Items */}
                 <h4 style={{ fontWeight: 700, marginBottom: '12px', fontSize: '0.85rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Items Ordered</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
                   {selected.items.map((item, i) => (
@@ -265,11 +217,7 @@ export default function AdminOrdersPage() {
                         {item.image && <img src={item.image} alt={item.title} style={{ width: '48px', height: '48px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0 }} />}
                         <div style={{ minWidth: 0 }}>
                           <div style={{ fontWeight: 600, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                            Qty: {item.qty} · ₦{item.price.toLocaleString()}
-                            {item.size && ` · Size: ${item.size}`}
-                            {item.color && ` · Color: ${item.color}`}
-                          </div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Qty: {item.qty} · ₦{item.price.toLocaleString()} {item.size && `· Size: ${item.size}`} {item.color && `· Color: ${item.color}`}</div>
                         </div>
                       </div>
                       <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>₦{(item.price * item.qty).toLocaleString()}</span>
@@ -277,42 +225,29 @@ export default function AdminOrdersPage() {
                   ))}
                 </div>
 
-                {/* Totals */}
                 <div style={{ background: 'var(--bg)', padding: '16px', borderRadius: 'var(--radius-sm)', marginBottom: '24px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.9rem' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>Total Amount</span>
-                    <strong>₦{selected.totalAmount.toLocaleString()}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.9rem' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>Amount Paid</span>
-                    <strong style={{ color: 'var(--success)' }}>₦{selected.amountPaid?.toLocaleString() || '0'}</strong>
-                  </div>
-                  {selected.paymentMethod === 'installment' && selected.totalAmount > selected.amountPaid && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px dashed var(--border)', fontSize: '0.9rem' }}>
-                      <span style={{ color: 'var(--warning)', fontWeight: 600 }}>Balance Due</span>
-                      <strong style={{ color: 'var(--warning)' }}>₦{(selected.totalAmount - selected.amountPaid).toLocaleString()}</strong>
-                    </div>
-                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.9rem' }}><span style={{ color: 'var(--text-secondary)' }}>Total Amount</span><strong>₦{selected.totalAmount.toLocaleString()}</strong></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.9rem' }}><span style={{ color: 'var(--text-secondary)' }}>Amount Paid</span><strong style={{ color: 'var(--success)' }}>₦{selected.amountPaid?.toLocaleString() || '0'}</strong></div>
                 </div>
 
-                {/* Action Buttons */}
+                {/* ✅ UPDATED ACTION BUTTONS */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
-                  <button onClick={() => updateStatus(selected._id, 'paid')} style={{ flex: '1 1 140px', padding: '14px', background: 'var(--success)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                    <i className="fas fa-check-circle"></i> Confirm Paid
+                  
+                  {/* WhatsApp Button Replaces Confirm Paid */}
+                  <button onClick={() => sendOrderConfirmationWhatsApp(selected.user?.phone, selected._id)} style={{ flex: '1 1 140px', padding: '14px', background: '#25D366', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                    <i className="fab fa-whatsapp"></i> Notify Customer
                   </button>
+
                   <button onClick={() => updateStatus(selected._id, 'delivered')} style={{ flex: '1 1 140px', padding: '14px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                     <i className="fas fa-truck"></i> Delivered
                   </button>
+                  
                   <button onClick={() => updateStatus(selected._id, 'failed')} style={{ flex: '1 1 140px', padding: '14px', background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', border: '1px solid var(--danger)', borderRadius: '8px', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                     <i className="fas fa-times-circle"></i> Reject
                   </button>
                 </div>
 
-                <button 
-                  onClick={() => handleSendEmail(selected._id)} 
-                  disabled={sendingEmail}
-                  style={{ width: '100%', marginTop: '10px', padding: '14px', background: '#4F46E5', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.9rem', cursor: sendingEmail ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', opacity: sendingEmail ? 0.7 : 1 }}
-                >
+                <button onClick={() => handleSendEmail(selected._id)} disabled={sendingEmail} style={{ width: '100%', marginTop: '10px', padding: '14px', background: '#4F46E5', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.9rem', cursor: sendingEmail ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', opacity: sendingEmail ? 0.7 : 1 }}>
                   {sendingEmail ? <><i className="fas fa-spinner fa-spin"></i> Sending Email...</> : <><i className="fas fa-envelope"></i> Email Receipt to Customer</>}
                 </button>
 
