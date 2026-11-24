@@ -3,7 +3,7 @@ import { connectToDatabase } from '@/lib/mongoose';
 import Product from '@/models/Product';
 
 export default async function sitemap() {
-  const baseUrl = 'https://omegally.vercel.app';
+  const baseUrl = 'https://omegally.store';
 
   // Static pages that always exist
   const staticRoutes = [

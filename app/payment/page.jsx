@@ -3,18 +3,24 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { usePaystackPayment } from 'react-paystack';
+
+// Dynamically import the Paystack hook (prevents SSR 'window' error)
+const usePaystackPayment = dynamic(
+  () => import('react-paystack').then((mod) => mod.usePaystackPayment),
+  { ssr: false }
+);
 
 export default function PaymentPage() {
   const { user } = useAuth();
   const { cart, clearCart } = useCart();
   const router = useRouter();
 
-  const [method, setMethod] = useState('instant'); // 'instant' | 'installment_2' | 'installment_4'
+  const [method, setMethod] = useState('instant');
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
   const [landmark, setLandmark] = useState('');
@@ -54,7 +60,7 @@ export default function PaymentPage() {
   const config = {
     reference: (new Date()).getTime().toString(),
     email: user?.email || 'customer@omegally.store',
-    amount: amountToPay * 100, // Paystack uses kobo (multiply by 100)
+    amount: amountToPay * 100,
     publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY,
     metadata: {
       custom_fields: [
@@ -65,14 +71,11 @@ export default function PaymentPage() {
     }
   };
 
-  const initializePayment = usePaystackPayment(config);
-
   const handlePaymentSuccess = async (reference) => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
       
-      // 1. Save the order to the database
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -95,14 +98,12 @@ export default function PaymentPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to save order');
 
-      // 2. Verify payment with Paystack (via your backend)
       await fetch('/api/paystack/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reference: reference.reference, orderId: data.order._id }),
       });
 
-      // 3. Redirect to success page
       router.push(`/payment-success?reference=${reference.reference}`);
       clearCart();
       
@@ -125,7 +126,6 @@ export default function PaymentPage() {
       <main style={{ paddingTop: 'calc(var(--nav-height) + 40px)', paddingBottom: '100px', minHeight: '80vh', background: 'var(--bg)' }}>
         <div style={{ maxWidth: '900px', margin: '0 auto', padding: '0 16px' }}>
           
-          {/* Step Indicator */}
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '40px', flexWrap: 'wrap' }}>
             {[1, 2].map((n) => (
               <div key={n} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -137,7 +137,6 @@ export default function PaymentPage() {
             ))}
           </div>
 
-          {/* STEP 1: Choose Plan */}
           {step === 1 && (
             <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '24px', alignItems: 'start' }} className="payment-grid">
               
@@ -147,7 +146,6 @@ export default function PaymentPage() {
                   
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     
-                    {/* Instant */}
                     <div onClick={() => setMethod('instant')} style={{ padding: '16px', borderRadius: '12px', border: method === 'instant' ? '2px solid var(--primary)' : '2px solid var(--border)', cursor: 'pointer', background: method === 'instant' ? 'rgba(37,99,235,0.05)' : 'transparent', transition: 'all 0.2s' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
                         <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: '2px solid', borderColor: method === 'instant' ? 'var(--primary)' : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -158,7 +156,6 @@ export default function PaymentPage() {
                       <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginLeft: '34px' }}>Pay 100% today. No extra fees.</p>
                     </div>
 
-                    {/* 2-Part */}
                     <div onClick={() => setMethod('installment_2')} style={{ padding: '16px', borderRadius: '12px', border: method === 'installment_2' ? '2px solid var(--primary)' : '2px solid var(--border)', cursor: 'pointer', background: method === 'installment_2' ? 'rgba(37,99,235,0.05)' : 'transparent', transition: 'all 0.2s' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
                         <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: '2px solid', borderColor: method === 'installment_2' ? 'var(--primary)' : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -169,7 +166,6 @@ export default function PaymentPage() {
                       <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginLeft: '34px' }}>Pay half today, half within 2 weeks. <br/><strong style={{ color: 'var(--warning)' }}>*A 4% service fee applies.</strong></p>
                     </div>
 
-                    {/* 4-Part */}
                     <div onClick={() => setMethod('installment_4')} style={{ padding: '16px', borderRadius: '12px', border: method === 'installment_4' ? '2px solid var(--primary)' : '2px solid var(--border)', cursor: 'pointer', background: method === 'installment_4' ? 'rgba(37,99,235,0.05)' : 'transparent', transition: 'all 0.2s' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
                         <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: '2px solid', borderColor: method === 'installment_4' ? 'var(--primary)' : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -183,7 +179,6 @@ export default function PaymentPage() {
                 </div>
               </div>
 
-              {/* Summary */}
               <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '24px' }} className="summary-box">
                 <h3 style={{ fontWeight: '700', marginBottom: '20px' }}>Order Summary</h3>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginBottom: '12px' }}>
@@ -217,7 +212,6 @@ export default function PaymentPage() {
             </div>
           )}
 
-          {/* STEP 2: Delivery Details & Paystack Button */}
           {step === 2 && (
             <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '24px', alignItems: 'start' }} className="payment-grid">
               
@@ -244,17 +238,15 @@ export default function PaymentPage() {
                     You are about to pay <strong>{fmt(amountToPay)}</strong> securely via Paystack. We support Cards, Bank Transfer, and USSD.
                   </p>
                   
-                  <button 
-                    onClick={() => {
-                      if (!landmark.trim()) return alert('Please provide a delivery landmark.');
-                      initializePayment({ onSuccess: handlePaymentSuccess, onClose: handlePaymentClose });
-                    }}
-                    disabled={loading}
-                    className="btn-primary" 
-                    style={{ width: '100%', padding: '16px', justifyContent: 'center', background: '#00C3F7', color: '#000', fontWeight: 700 }}
-                  >
-                    {loading ? 'Verifying...' : `Pay ${fmt(amountToPay)} with Paystack`}
-                  </button>
+                  {/* PAYSTACK PAYMENT BUTTON */}
+                  <PaystackButton 
+                    config={config}
+                    onSuccess={handlePaymentSuccess}
+                    onClose={handlePaymentClose}
+                    loading={loading}
+                    landmark={landmark}
+                    amount={amountToPay}
+                  />
                   
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '16px', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
                     <i className="fas fa-lock"></i> Secured by Paystack
@@ -262,7 +254,6 @@ export default function PaymentPage() {
                 </div>
               </div>
 
-              {/* Summary */}
               <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '24px' }} className="summary-box">
                 <h3 style={{ fontWeight: '700', marginBottom: '20px' }}>Summary</h3>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '1.05rem', marginBottom: '12px' }}>
@@ -290,5 +281,30 @@ export default function PaymentPage() {
         }
       `}</style>
     </>
+  );
+}
+
+// --- PAYSTACK BUTTON COMPONENT (OUTSIDE the main page to avoid SSR issues) ---
+function PaystackButton({ config, onSuccess, onClose, loading, landmark, amount }) {
+  // This runs only in the browser because of the 'use client' at top
+  const { usePaystackPayment } = require('react-paystack');
+  const initializePayment = usePaystackPayment(config);
+
+  const handleClick = () => {
+    if (!landmark?.trim()) return alert('Please provide a delivery landmark.');
+    initializePayment({ onSuccess, onClose });
+  };
+
+  const fmt = (num) => `₦${num.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+
+  return (
+    <button 
+      onClick={handleClick}
+      disabled={loading}
+      className="btn-primary" 
+      style={{ width: '100%', padding: '16px', justifyContent: 'center', background: '#00C3F7', color: '#000', fontWeight: 700 }}
+    >
+      {loading ? 'Verifying...' : `Pay ${fmt(amount)} with Paystack`}
+    </button>
   );
 }

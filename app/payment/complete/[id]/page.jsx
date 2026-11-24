@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { usePaystackPayment } from 'react-paystack';
 
 export default function CompleteInstallmentPage() {
   const { id } = useParams();
@@ -28,22 +27,18 @@ export default function CompleteInstallmentPage() {
 
   const balanceDue = order.totalAmount - (order.amountPaid || 0);
 
-  // --- PAYSTACK SETUP FOR BALANCE ---
   const config = {
     reference: (new Date()).getTime().toString(),
     email: order.user?.email || 'omegallyofficial@gmail.com',
-    amount: balanceDue * 100, // Paystack uses kobo
-    publicKey: process.env.PAYSTACK_PUBLIC_KEY,
+    amount: balanceDue * 100,
+    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY,
   };
-
-  const initializePayment = usePaystackPayment(config);
 
   const handlePaymentSuccess = async (reference) => {
     setProcessing(true);
     try {
       const token = localStorage.getItem('token');
       
-      // 1. Update order to paid
       await fetch(`/api/orders/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -54,7 +49,6 @@ export default function CompleteInstallmentPage() {
         }),
       });
 
-      // 2. Verify with Paystack
       await fetch('/api/paystack/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -90,14 +84,13 @@ export default function CompleteInstallmentPage() {
               <div style={{ fontSize: '2.2rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '-0.02em' }}>₦{balanceDue.toLocaleString()}</div>
             </div>
 
-            <button 
-              onClick={() => initializePayment({ onSuccess: handlePaymentSuccess, onClose: () => console.log('closed') })}
-              disabled={processing}
-              className="btn-primary" 
-              style={{ width: '100%', padding: '16px', justifyContent: 'center', fontSize: '1rem', background: '#00C3F7', color: '#000', fontWeight: 700 }}
-            >
-              {processing ? 'Verifying...' : `Pay ₦${balanceDue.toLocaleString()} with Paystack`}
-            </button>
+            <PaystackButton 
+              config={config}
+              onSuccess={handlePaymentSuccess}
+              onClose={() => console.log('closed')}
+              processing={processing}
+              amount={balanceDue}
+            />
 
             <div style={{ textAlign: 'center', marginTop: '16px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
               <i className="fas fa-lock"></i> Secured by Paystack
@@ -107,5 +100,26 @@ export default function CompleteInstallmentPage() {
       </main>
       <Footer />
     </>
+  );
+}
+
+// --- PAYSTACK BUTTON COMPONENT ---
+function PaystackButton({ config, onSuccess, onClose, processing, amount }) {
+  const { usePaystackPayment } = require('react-paystack');
+  const initializePayment = usePaystackPayment(config);
+
+  const handleClick = () => {
+    initializePayment({ onSuccess, onClose });
+  };
+
+  return (
+    <button 
+      onClick={handleClick}
+      disabled={processing}
+      className="btn-primary" 
+      style={{ width: '100%', padding: '16px', justifyContent: 'center', fontSize: '1rem', background: '#00C3F7', color: '#000', fontWeight: 700 }}
+    >
+      {processing ? 'Verifying...' : `Pay ₦${amount.toLocaleString()} with Paystack`}
+    </button>
   );
 }
