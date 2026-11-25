@@ -9,7 +9,7 @@ export default function Trending() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-  fetch('/api/products?limit=40')
+  fetch('/api/products?limit=100')
     .then((res) => {
       // Check if the response is actually JSON before parsing
       const contentType = res.headers.get('content-type');
