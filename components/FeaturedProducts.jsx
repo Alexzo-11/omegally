@@ -8,16 +8,24 @@ export default function FeaturedProducts() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetch('/api/products?limit=50') 
-      .then((r) => r.json())
-      .then((d) => {
-        const allProducts = d.products || [];
-        const featured = allProducts.filter(p => p.isFeatured);
-        setProducts(featured.length > 0 ? featured.slice(0, 8) : allProducts.slice(0, 4));
-      })
-      .finally(() => setLoading(false));
-  }, []);
+ useEffect(() => {
+  fetch('/api/products?limit=40')
+    .then((res) => {
+      // Check if the response is actually JSON before parsing
+      const contentType = res.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        return res.json();
+      }
+      throw new Error('Server returned an invalid response');
+    })
+    .then((data) => {
+      setProducts(data.products || []);
+    })
+    .catch((err) => {
+      console.error('Failed to load trending products:', err);
+    })
+    .finally(() => setLoading(false));
+}, []);
 
   return (
     <section className="featured-section" style={{ padding: '80px 0', background: 'var(--bg)' }}>
